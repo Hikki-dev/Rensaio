@@ -193,6 +193,9 @@ namespace RensaioBackend.Services.Background
                     .SetProperty(j => j.StartedDate, DateTime.UtcNow), stoppingToken);
         }
 
+        /// <summary>The longest a single download job may run. A chapter takes minutes, never most of an hour.</summary>
+        private static readonly TimeSpan MaxJobRunTime = TimeSpan.FromMinutes(45);
+
         private async Task ExecuteJobAsync(EnqueueEntity job, JobQueues queueName, QueueSettings queueSettings,
             CancellationToken stoppingToken)
         {
@@ -206,7 +209,26 @@ namespace RensaioBackend.Services.Background
                 _logger.LogDebug("Executing job {JobType} {Key} in queue {queueName}", job.JobType, job.Key, queueName);
 
                 JobInfo jobInfo = new JobInfo(job.Id, job.JobType, job.Key, job.GroupKey, job.JobParameters);
-                JobResult result = await jobExecution.ExecuteJobAsync(jobInfo, stoppingToken).ConfigureAwait(false);
+
+                // Watchdog: a job that hangs (a site that never answers, a browser that froze) keeps its slot for
+                // ever, and when every slot hangs the whole queue stands still. After the time limit the job is
+                // cancelled, counted as failed (so it is retried later), and its slot is free again.
+                using var watchdog = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
+                Task<JobResult> work = jobExecution.ExecuteJobAsync(jobInfo, watchdog.Token);
+                // only downloads: scans and library checks may really take long
+                TimeSpan limit = queueName == JobQueues.Downloads ? MaxJobRunTime : Timeout.InfiniteTimeSpan;
+                Task finished = await Task.WhenAny(work, Task.Delay(limit, stoppingToken)).ConfigureAwait(false);
+                if (finished != work && !stoppingToken.IsCancellationRequested)
+                {
+                    watchdog.Cancel();
+                    _ = work.ContinueWith(t => _ = t.Exception, TaskContinuationOptions.OnlyOnFaulted);   // nobody waits for it any more
+                    _logger.LogWarning("Job {JobType} {Key} in queue {queueName} did not finish in {minutes} minutes; stopped waiting for it, it will be retried.",
+                        job.JobType, job.Key, queueName, (int)limit.TotalMinutes);
+                    await HandleJobFailureAsync(job, queueSettings, stoppingToken).ConfigureAwait(false);
+                    return;
+                }
+
+                JobResult result = await work.ConfigureAwait(false);
                 
                 await HandleJobResultAsync(job, result, queueName, stoppingToken).ConfigureAwait(false);
             }
