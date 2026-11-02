@@ -1,3 +1,5 @@
+> **Hikki-dev fork.** Adds disk-aware adding (chapters you already have are never fetched again), one site per chapter, automatic failover to the next working source, and a breaker for dead sources. See [FORK-NOTES.md](FORK-NOTES.md). Image: `ghcr.io/hikki-dev/rensaio:latest`. All credit to maxpiva and the original Kaizoku authors; licence unchanged (GPL-3.0).
+
 <div align="center">
 
 <img width="500px" src="./RensaioFrontend/public/rensaiow.png" alt="Rensaiō">

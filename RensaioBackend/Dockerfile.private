@@ -1,4 +1,0 @@
-FROM maxpiva/rensaio:latest
-COPY ./bin/linux/amd64/ /app/
-COPY ./scripts/entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
