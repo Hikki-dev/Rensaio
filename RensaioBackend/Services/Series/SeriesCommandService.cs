@@ -800,7 +800,8 @@ namespace RensaioBackend.Services.Series
                         .Where(a => a.Id == u.Item2.SeriesId).AsNoTracking().FirstAsync(token).ConfigureAwait(false);
                     if (!series.PauseDownloads)
                     {
-                        List<ChapterDownload> chaps = series.GenerateDownloadsFromChapterData(u.Item2, u.Item1.Chapters);
+                        List<ChapterDownload> chaps = series.GenerateDownloadsFromChapterData(u.Item2, u.Item1.Chapters,
+                            new HashSet<decimal>(DiskChapterScanner.Scan(Path.Combine((await _settings.GetSettingsAsync(token).ConfigureAwait(false)).StorageFolder, series.StoragePath)).Keys));
                         if (chaps.Count > 0)
                         {
                             await _downloadCommand.QueueChapterDownloadsAsync(u.Item2, chaps, token).ConfigureAwait(false);
@@ -1022,7 +1023,8 @@ namespace RensaioBackend.Services.Series
                 return JobResult.Success;
             }
 
-            List<ChapterDownload> chaps = series.GenerateDownloadsFromChapterData(serie, chapterData);
+            List<ChapterDownload> chaps = series.GenerateDownloadsFromChapterData(serie, chapterData,
+                new HashSet<decimal>(DiskChapterScanner.Scan(Path.Combine((await _settings.GetSettingsAsync(token).ConfigureAwait(false)).StorageFolder, series.StoragePath)).Keys));
             int newCount = chaps.Count(a => !a.IsUpdate);
             int updateCount = chaps.Count(a => a.IsUpdate);
 

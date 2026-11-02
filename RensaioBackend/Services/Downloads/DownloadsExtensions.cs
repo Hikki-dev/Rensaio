@@ -44,7 +44,7 @@ public static class DownloadsExtensions
         return downloads;
     }
 
-    public static List<ChapterDownload> GenerateDownloadsFromChapterData(this RensaioBackend.Models.Database.SeriesEntity series, SeriesProviderEntity serie, List<ParsedChapter>? chapterData)
+    public static List<ChapterDownload> GenerateDownloadsFromChapterData(this RensaioBackend.Models.Database.SeriesEntity series, SeriesProviderEntity serie, List<ParsedChapter>? chapterData, ISet<decimal>? onDisk = null)
     {
         List<ParsedChapter> wanted = [];
         List<ParsedChapter> skip_the_filter = [];
@@ -117,7 +117,14 @@ public static class DownloadsExtensions
 
             if (serie.ContinueAfterChapter != null)
             {
-                wanted = wanted.Where(c => c.ParsedNumber > serie.ContinueAfterChapter).ToList();
+                // holes between the chapters you have are filled too (a few at a time)
+                List<decimal> holes = GapRepair.Pick(
+                    wanted.Select(c => c.ParsedNumber),
+                    allSeries.SelectMany(s => s.Chapters).Where(c => c.Filename != null && c.Number.HasValue).Select(c => c.Number!.Value),
+                    onDisk ?? new HashSet<decimal>(),
+                    serie.ContinueAfterChapter);
+                wanted = wanted.Where(c => c.ParsedNumber > serie.ContinueAfterChapter
+                    || holes.Contains(c.ParsedNumber)).ToList();
             }
         }
 

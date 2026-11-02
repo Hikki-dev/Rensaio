@@ -28,7 +28,7 @@ You do not need to know how manga sources work. Add a series, and it looks after
 
 ## What is different
 
-Everything Rensaiō does is still here. These four things changed.
+Everything Rensaiō does is still here. These five things changed.
 
 | Situation | The original | This fork |
 |---|---|---|
@@ -36,6 +36,7 @@ Everything Rensaiō does is still here. These four things changed.
 | Several sites have the same chapter | Each one can download it | One site per chapter. The others skip it while it is queued or already there |
 | A site fails on a chapter | Tries the same site again and again, for hours | Moves to the next working site that has it, straight away, and never goes back to one that failed |
 | A site is down | Tries every title on it, tens of thousands of requests | Stops after 15 failures in a row and tries again on the next schedule |
+| A chapter is missing in the middle of a series you follow | Stays missing for good | Filled in, a few at a time, from any site that has it. It never reaches back before your first chapter, and a chapter you removed on purpose is not brought back |
 
 ## How a chapter travels
 
@@ -44,7 +45,7 @@ Everything Rensaiō does is still here. These four things changed.
 3. It marks those chapters as done and starts after the highest one.
 4. The best site downloads only what is missing. The other sites see that the chapter is taken and leave it alone.
 5. If a download fails, the chapter goes to the next healthy site that lists it. A site that already failed on it is not asked twice.
-6. When a new chapter appears, the same thing happens again by itself.
+6. When a new chapter appears, the same thing happens again by itself. Any hole between the chapters you have is filled too, 25 at a time.
 
 ## Run it
 

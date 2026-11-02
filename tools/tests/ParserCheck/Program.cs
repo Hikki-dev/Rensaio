@@ -1,3 +1,4 @@
+using RensaioBackend.Services.Downloads;
 using RensaioBackend.Services.Series;
 var cases = new (string name, decimal? want)[] {
     ("Chainsaw Man - Ch.230.cbz", 230), ("Chainsaw Man - Vol.23 Ch.229.cbz", 229), ("[MangaKatana][en] Chainsaw Man 231.cbz", 231),
@@ -21,4 +22,17 @@ if (scan[3] != "S - Ch.2-3.cbz") { Console.WriteLine("FAIL first file should win
 if (ChapterNameParser.ScanFolder(Path.Combine(dir, "missing")).Count != 0) { Console.WriteLine("FAIL missing folder"); bad++; }
 Directory.Delete(dir, true);
 foreach (var (name, want) in cases) { var got = ChapterNameParser.ChapterOf(name); if (got != want) { Console.WriteLine($"FAIL {name}: got {got}, want {want}"); bad++; } }
+// gap repair
+static string Gaps(decimal[] listed, decimal[] held, decimal[] disk, decimal? after, int max = 25) => string.Join(",", GapRepair.Pick(listed, held, disk, after, max));
+decimal[] R(int a, int b) => Enumerable.Range(a, b - a + 1).Select(n => (decimal)n).ToArray();
+void Expect(string got, string want, string label) { if (got != want) { Console.WriteLine($"FAIL gap {label}: got [{got}], want [{want}]"); bad++; } }
+Expect(Gaps(R(1, 20), [1, 2, 3, 7, 8], [], 8), "4,5,6", "hole between owned chapters");
+Expect(Gaps(R(1, 20), [10, 11, 12], [], 12), "", "never fills before the first chapter you have");
+Expect(Gaps(R(1, 20), [1, 2, 3, 7, 8], [4, 5], 8), "6", "chapters found on disk are not holes");
+Expect(Gaps(R(1, 20), [1, 8], [], null), "", "no continue-after mark: normal path covers it");
+Expect(Gaps(R(1, 20), [], [], 8), "", "nothing owned, nothing to repair");
+Expect(Gaps(R(1, 200), [1, 150], [], 150, 5), "2,3,4,5,6", "a long hole is filled a few at a time");
+Expect(Gaps([1, 2, 3.5m, 4, 5], [1, 5], [], 5), "2,3.5,4", "fractional chapters");
+Expect(Gaps(R(1, 10), [1, 10], [], 5), "2,3,4,5", "only up to the continue-after mark, the rest is the normal path");
+Expect(Gaps([2, 2, 3], [1, 4], [], 4), "2,3", "duplicate listings");
 Console.WriteLine(bad == 0 ? "parser ok" : $"{bad} failed"); return bad;

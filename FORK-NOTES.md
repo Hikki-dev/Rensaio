@@ -7,6 +7,7 @@ What is changed, all in RensaioBackend:
 1b. Services/Series/ChapterNameParser.cs: the file-name reader, with a check in tools/tests/ParserCheck (`dotnet run`).
 2. Services/Downloads/DownloadsExtensions.cs: a permanent source also skips chapters any other source already holds, so a chapter comes from one site only.
 3. Services/Downloads/DownloadCommandService.cs: QueueChapterDownloadsAsync skips a chapter another source is already downloading; RescheduleDownloadAsync fails over to the next healthy source that lists the chapter (TryFailoverAsync, ChapterDownload.TriedProviders) instead of retrying a dead one for hours.
+4b. Services/Downloads/GapRepair.cs (new) and DownloadsExtensions.cs: chapters missing between the lowest and highest one you own (and not on disk) are fetched, up to 25 per run. Pure rule, checked in tools/tests/ParserCheck.
 4. Services/Series/SeriesCommandService.cs UpdateSourceAsync: a source that fails 15 titles in a row stops the pass (it used to retry tens of thousands of titles).
 
 tools/kaizoku_smart_add.py: add a series from the best source, from the command line.
