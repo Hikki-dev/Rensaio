@@ -1,32 +1,14 @@
-using System.Globalization;
-using System.Text.RegularExpressions;
 using RensaioBackend.Models.Database;
 
 namespace RensaioBackend.Services.Series;
 
 /// <summary>
 /// Finds the chapters that already sit in a series folder, so adding a series never downloads them again
-/// (and chapters missing in the middle are still fetched). Understands "Ch.230", "Chapter 230", "c230",
-/// "Title 230.cbz" and "Vol.23 Ch.229"; volume numbers and years are never read as chapters.
+/// (and chapters missing in the middle are still fetched). See <see cref="ChapterNameParser"/> for the names understood.
 /// </summary>
 public static class DiskChapterScanner
 {
-    private static readonly string[] Extensions = [".cbz", ".cbr", ".zip", ".pdf", ".epub"];
-    public static Dictionary<decimal, string> Scan(string folder)
-    {
-        Dictionary<decimal, string> found = [];
-        if (!Directory.Exists(folder))
-            return found;
-        foreach (string f in Directory.EnumerateFiles(folder, "*", SearchOption.TopDirectoryOnly))
-        {
-            if (!Extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
-                continue;
-            decimal? n = ChapterNameParser.ChapterOf(f);
-            if (n.HasValue && !found.ContainsKey(n.Value))
-                found[n.Value] = Path.GetFileName(f);
-        }
-        return found;
-    }
+    public static Dictionary<decimal, string> Scan(string folder) => ChapterNameParser.ScanFolder(folder);
 
     /// <summary>
     /// Marks the chapters that are already on disk as downloaded, on one provider (the permanent one if there is

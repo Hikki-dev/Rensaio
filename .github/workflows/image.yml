@@ -26,6 +26,8 @@ jobs:
         with: { node-version: "20" }
       - uses: pnpm/action-setup@v4
         with: { version: 10 }
+      - name: Check the chapter name reader
+        run: dotnet run --project tools/tests/ParserCheck
       - name: Frontend
         working-directory: RensaioFrontend
         run: pnpm install --frozen-lockfile && pnpm run build
