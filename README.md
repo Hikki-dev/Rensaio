@@ -1,5 +1,3 @@
-> **Hikki-dev fork.** Adds disk-aware adding (chapters you already have are never fetched again), one site per chapter, automatic failover to the next working source, and a breaker for dead sources. See [FORK-NOTES.md](FORK-NOTES.md). Image: `ghcr.io/hikki-dev/rensaio:latest`. All credit to maxpiva and the original Kaizoku authors; licence unchanged (GPL-3.0).
-
 <div align="center">
 
 <img width="500px" src="./RensaioFrontend/public/rensaiow.png" alt="Rensaiō">
@@ -11,11 +9,53 @@
 
 [![Discord](https://img.shields.io/discord/1516878111239700510?label&logo=discord&logoColor=white&color=blue)](https://discord.gg/f53BRuyVZf)&nbsp;&nbsp;
 [![Website](https://img.shields.io/badge/-rensaio.net-blue?logo=googlechrome&logoColor=white)](https://www.rensaio.net)&nbsp;&nbsp;
-[![License](https://img.shields.io/github/license/maxpiva/rensaio?label&color=blue)](./LICENSE)&nbsp;&nbsp;
+[![License](https://img.shields.io/github/license/Hikki-dev/Rensaio?label&color=blue)](./LICENSE)&nbsp;&nbsp;
 [![Docker Pulls](https://img.shields.io/docker/pulls/maxpiva/rensaio?label&logo=docker&logoColor=white&color=blue)](https://hub.docker.com/r/maxpiva/rensaio)&nbsp;&nbsp;
 [![Release](https://img.shields.io/github/v/release/maxpiva/rensaio?label&logo=github&color=blue)](https://github.com/maxpiva/Rensaio/releases)
 
 </div>
+
+---
+
+## Why this fork
+
+[Kaizoku](https://github.com/oae/kaizoku) was archived, and [Rensaiō](https://github.com/maxpiva/Rensaio) by maxpiva carries it on. This fork keeps everything Rensaiō does and fixes the things that bite when a series has **several sources**: the same chapter fetched from every site, a dead site retried for hours, and re-downloading what you already own.
+
+| | Rensaiō | This fork |
+|---|---|---|
+| Adding a series that is already in your folder | Lists every chapter, may fetch from chapter 1 | Reads your folder first. Chapters you have are **never fetched again**; gaps in the middle are still filled |
+| A chapter that several sources list | Each permanent source can download it | **One site per chapter**: others skip it while it is queued or already held |
+| A source fails on a chapter | Retries the same source for hours | **Fails over at once** to the next healthy source that has it |
+| A source is down | Retries every title (tens of thousands of requests, 100% of a core) | A **breaker** stops the pass after 15 failures in a row and tries again on the next schedule |
+
+How a chapter now flows:
+
+```mermaid
+flowchart LR
+  A[Add series] --> B[Read your folder]
+  B --> C[Mark chapters you own as downloaded]
+  C --> D[Best source downloads only what is missing]
+  D -->|fails| E[Next healthy source that lists it]
+  E -->|fails| F[Next one, never the same twice]
+  D -->|done| G[Other sources skip that chapter]
+```
+
+The code is small and local: see [FORK-NOTES.md](FORK-NOTES.md) for every change. `tools/kaizoku_smart_add.py` adds a series from the command line by ranking the sources for you.
+
+### Run it
+
+```bash
+docker run -d --name kaizoku --restart unless-stopped -p 9833:9833 \
+  -e PUID=1000 -e PGID=1000 -e TZ=UTC \
+  -v /path/to/config:/config -v /path/to/manga:/series \
+  ghcr.io/hikki-dev/rensaio:latest
+```
+
+Coming from Kaizoku 2.0 or Rensaiō? Back up your config folder and start this image on the same folders; the database is upgraded on first start. It is part of [media-server-setup](https://github.com/Hikki-dev/media-server-setup), which installs it with the rest of a home media server.
+
+All credit to maxpiva and the Kaizoku authors. Licence unchanged: GPL-3.0.
+
+---
 
 <div align="center">
 
