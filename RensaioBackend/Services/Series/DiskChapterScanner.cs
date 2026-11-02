@@ -12,25 +12,6 @@ namespace RensaioBackend.Services.Series;
 public static class DiskChapterScanner
 {
     private static readonly string[] Extensions = [".cbz", ".cbr", ".zip", ".pdf", ".epub"];
-    private static readonly Regex Noise = new(@"\(\d{4}\)|\bvol(?:ume)?[\s._-]*\d+(?:\.\d+)?", RegexOptions.IgnoreCase | RegexOptions.Compiled);
-    private static readonly Regex[] Patterns =
-    [
-        new(@"(?:ch(?:apter)?|c)[\s._-]*(\d+(?:\.\d+)?)", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-        new(@"[\s_-](\d{1,4}(?:\.\d+)?)(?:\s*v\d)?$", RegexOptions.IgnoreCase | RegexOptions.Compiled),
-    ];
-
-    public static decimal? ChapterOf(string fileName)
-    {
-        string name = Noise.Replace(Path.GetFileNameWithoutExtension(fileName), " ");
-        foreach (Regex rx in Patterns)
-        {
-            Match m = rx.Match(name);
-            if (m.Success && decimal.TryParse(m.Groups[1].Value, NumberStyles.Number, CultureInfo.InvariantCulture, out decimal n))
-                return n;
-        }
-        return null;
-    }
-
     public static Dictionary<decimal, string> Scan(string folder)
     {
         Dictionary<decimal, string> found = [];
@@ -40,7 +21,7 @@ public static class DiskChapterScanner
         {
             if (!Extensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase))
                 continue;
-            decimal? n = ChapterOf(f);
+            decimal? n = ChapterNameParser.ChapterOf(f);
             if (n.HasValue && !found.ContainsKey(n.Value))
                 found[n.Value] = Path.GetFileName(f);
         }

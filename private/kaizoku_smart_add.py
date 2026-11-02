@@ -13,7 +13,7 @@ Needs only Python 3. Run it on the machine that has Kaizoku and the manga folder
 import argparse, json, os, re, sys, urllib.parse, urllib.request
 
 # Chapter number from a file name: "Ch.230", "Chapter 230", "c230", "- 230.cbz", "[Group] Title 230.cbz" -- never "Vol.23", years or "(2020)"
-_CH = [re.compile(r"(?:ch(?:apter)?|c)[\s._-]*(\d+(?:\.\d+)?)", re.I), re.compile(r"[\s_-](\d{1,4}(?:\.\d+)?)(?:\s*v\d)?\.(?:cbz|cbr|zip|pdf|epub)$", re.I)]
+_CH = [re.compile(r"(?<![a-z])(?:ch(?:apter)?|c)[\s._-]*(\d+(?:\.\d+)?)", re.I), re.compile(r"[\s_-](\d{1,4}(?:\.\d+)?)(?:\s*v\d)?\.(?:cbz|cbr|zip|pdf|epub)$", re.I)]
 
 
 def chapter_of(name):
@@ -136,6 +136,7 @@ def main():
 
 def _selftest():
     assert chapter_of("Chainsaw Man - Vol.23 Ch.229.cbz") == 229 and chapter_of("One Piece - Ch.10.cbz") == 10
+    assert chapter_of("Disc 2.cbz") == 2 and chapter_of("Title Disc Chapter 9.cbz") == 9
     assert chapter_of("[MangaKatana][en] Chainsaw Man 231.cbz") == 231 and chapter_of("Title Ch.12.5.cbz") == 12.5 and chapter_of("cover.jpg") is None
     ch = lambda ns: [{"Number": n, "ProviderUploadDate": "2024-01-01T00:00:00"} for n in ns]
     aug = {"series": [{"mihonProviderId": "A", "chapters": ch(range(1, 101))}, {"mihonProviderId": "A", "chapters": ch([1, 2])},
