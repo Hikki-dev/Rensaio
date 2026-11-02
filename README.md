@@ -1,457 +1,105 @@
-<div align="center">
+# Rensaiō for many sources
 
-<img width="500px" src="./RensaioFrontend/public/rensaiow.png" alt="Rensaiō">
-<br/>
+[![Image](https://github.com/Hikki-dev/Rensaio/actions/workflows/image.yml/badge.svg)](https://github.com/Hikki-dev/Rensaio/actions/workflows/image.yml)
+[![Licence: GPL-3.0](https://img.shields.io/github/license/Hikki-dev/Rensaio)](LICENSE)
+[![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fhikki--dev%2Frensaio-2f86d6)](https://github.com/Hikki-dev/Rensaio/pkgs/container/rensaio)
+[![Based on Rensaiō](https://img.shields.io/badge/based%20on-Rensaiō-e11d48)](https://github.com/maxpiva/Rensaio)
 
-</div>
+Follow a manga once. New chapters arrive by themselves, from whichever site works.
 
-<div align="center">
+<p align="center"><img src="docs/images/flow.svg" alt="Add a manga once. The app looks at your folder, the best site downloads only what is missing, and if a site fails the next working site steps in." width="100%"></p>
 
-[![Discord](https://img.shields.io/discord/1516878111239700510?label&logo=discord&logoColor=white&color=blue)](https://discord.gg/f53BRuyVZf)&nbsp;&nbsp;
-[![Website](https://img.shields.io/badge/-rensaio.net-blue?logo=googlechrome&logoColor=white)](https://www.rensaio.net)&nbsp;&nbsp;
-[![License](https://img.shields.io/github/license/Hikki-dev/Rensaio?label&color=blue)](./LICENSE)&nbsp;&nbsp;
-[![Docker Pulls](https://img.shields.io/docker/pulls/maxpiva/rensaio?label&logo=docker&logoColor=white&color=blue)](https://hub.docker.com/r/maxpiva/rensaio)&nbsp;&nbsp;
-[![Release](https://img.shields.io/github/v/release/maxpiva/rensaio?label&logo=github&color=blue)](https://github.com/maxpiva/Rensaio/releases)
+<p align="center"><sub>How a manga is added and kept up to date.</sub></p>
 
-</div>
+Most manga exist on several sites, and sites come and go. This is [Rensaiō](https://github.com/maxpiva/Rensaio), the manga downloader that carries on the archived [Kaizoku](https://github.com/oae/kaizoku), with the rough edges of many sources smoothed out. It does not fetch what you already have. It does not fetch one chapter from three places. When a site breaks, it moves on to the next one instead of waiting.
 
----
+You do not need to know how manga sources work. Add a series, and it looks after the rest.
 
-## Why this fork
+## On this page
 
-[Kaizoku](https://github.com/oae/kaizoku) was archived, and [Rensaiō](https://github.com/maxpiva/Rensaio) by maxpiva carries it on. This fork keeps everything Rensaiō does and fixes the things that bite when a series has **several sources**: the same chapter fetched from every site, a dead site retried for hours, and re-downloading what you already own.
+* [What is different](#what-is-different): the four fixes, side by side with the original
+* [How a chapter travels](#how-a-chapter-travels): from adding a series to a new chapter on your shelf
+* [Run it](#run-it): one command, and how to move over from Kaizoku
+* [A closer look](#a-closer-look): the screens that matter
+* [Careful with real files](#careful-with-real-files)
+* [Add a series from the command line](#add-a-series-from-the-command-line)
+* [Help and more reading](#help-and-more-reading)
+* [Credits and licence](#credits-and-licence)
 
-| | Rensaiō | This fork |
+## What is different
+
+Everything Rensaiō does is still here. These four things changed.
+
+| Situation | The original | This fork |
 |---|---|---|
-| Adding a series that is already in your folder | Lists every chapter, may fetch from chapter 1 | Reads your folder first. Chapters you have are **never fetched again**; gaps in the middle are still filled |
-| A chapter that several sources list | Each permanent source can download it | **One site per chapter**: others skip it while it is queued or already held |
-| A source fails on a chapter | Retries the same source for hours | **Fails over at once** to the next healthy source that has it |
-| A source is down | Retries every title (tens of thousands of requests, 100% of a core) | A **breaker** stops the pass after 15 failures in a row and tries again on the next schedule |
+| You add a manga that is already in your folder | Lists every chapter and may fetch from chapter 1 | Reads your folder first. Chapters you have are never fetched again, and a gap in the middle is still filled |
+| Several sites have the same chapter | Each one can download it | One site per chapter. The others skip it while it is queued or already there |
+| A site fails on a chapter | Tries the same site again and again, for hours | Moves to the next working site that has it, straight away, and never goes back to one that failed |
+| A site is down | Tries every title on it, tens of thousands of requests | Stops after 15 failures in a row and tries again on the next schedule |
 
-How a chapter now flows:
+## How a chapter travels
 
-```mermaid
-flowchart LR
-  A[Add series] --> B[Read your folder]
-  B --> C[Mark chapters you own as downloaded]
-  C --> D[Best source downloads only what is missing]
-  D -->|fails| E[Next healthy source that lists it]
-  E -->|fails| F[Next one, never the same twice]
-  D -->|done| G[Other sources skip that chapter]
-```
+1. You add a manga and pick the sites you like.
+2. The app reads the folder it will use and finds the chapters already there. It understands names such as `Ch.230`, `Chapter 230`, `c230`, `Vol.23 Ch.229` and `Title 231.cbz`, and it never reads a volume number or a year as a chapter.
+3. It marks those chapters as done and starts after the highest one.
+4. The best site downloads only what is missing. The other sites see that the chapter is taken and leave it alone.
+5. If a download fails, the chapter goes to the next healthy site that lists it. A site that already failed on it is not asked twice.
+6. When a new chapter appears, the same thing happens again by itself.
 
-The code is small and local: see [FORK-NOTES.md](FORK-NOTES.md) for every change. `tools/kaizoku_smart_add.py` adds a series from the command line by ranking the sources for you.
-
-### Run it
+## Run it
 
 ```bash
 docker run -d --name kaizoku --restart unless-stopped -p 9833:9833 \
   -e PUID=1000 -e PGID=1000 -e TZ=UTC \
-  -v /path/to/config:/config -v /path/to/manga:/series \
+  -v /path/to/config:/config \
+  -v /path/to/manga:/series \
   ghcr.io/hikki-dev/rensaio:latest
 ```
 
-Coming from Kaizoku 2.0 or Rensaiō? Back up your config folder and start this image on the same folders; the database is upgraded on first start. It is part of [media-server-setup](https://github.com/Hikki-dev/media-server-setup), which installs it with the rest of a home media server.
+Open `http://your-server:9833` and follow the short first-time setup.
 
-All credit to maxpiva and the Kaizoku authors. Licence unchanged: GPL-3.0.
+Coming from Kaizoku 2.0 or Rensaiō? Stop the old container, copy your config folder somewhere safe, and start this image on the same two folders. Your series and settings are upgraded on the first start.
 
----
+This fork is also what [media-server-setup](https://github.com/Hikki-dev/media-server-setup) installs for manga, next to Jellyfin and the rest of a home media server.
 
-<div align="center">
+## A closer look
 
-<strong>Rensaiō</strong> is a modern fork of the original <strong>Kaizoku</strong> and <strong>Kaizoku Next Gen</strong> by OAE, built to fill the void and bring a streamlined series manager back to life.
+The Sources page shows every site you have installed, and the Status page tells you early when a site or a series needs attention.
 
-<strong>What does it do?</strong><br/>
+<p align="center"><img src="docs/images/sources.png" alt="The Sources page: four installed sites, each with its version and language" width="100%"></p>
 
-When you subscribe to a series, it will automatically download it. Whenever the series is updated in any of your configured providers, new chapters will be downloaded automatically, in a "drop and forget" fashion.
+<p align="center"><img src="docs/images/status.png" alt="The Status page: counters for series and source warnings, and a list of series that need a look" width="100%"></p>
 
-</div>
+## Careful with real files
 
-> [!IMPORTANT]
-> ⬆️ **You can upgrade directly from Kaizoku.Net to Rensaiō.** No changes are required on your side: simply run the new executable or update your Docker image, and everything will be upgraded automatically.
->
-> Nevertheless, **before upgrading**, make sure to back up your config directory, including your database. Since the devil never rests.
+The folder reading is built to be cautious, because it works on your real library.
 
----
+* A number that looks like a year is ignored, so a stray `2023` never makes the app skip a whole series.
+* Chapters such as `10.5` and `0` are kept as they are.
+* If a folder has only a few chapters, the command line tool will not guess. It asks you whether to download everything or to continue after a chapter you choose.
+* A site that is down, slow or blocked never stops the other sites from working.
 
-## Table of Contents
+The file name reader has its own small check: `cd tools/tests/ParserCheck && dotnet run`.
 
-- [Quick Start](#-quick-start)
-- [What It Does](#-what-it-does)
-- [Key Features](#-key-features)
-- [Under the Hood](#-under-the-hood)
-- [Issues](#-issues)
-- [Running Android libraries on .NET, is that possible?](#-running-android-libraries-on-net-is-that-possible)
-- [Docker Support](#-docker-support)
-  - [Volumes](#-volumes)
-  - [Ports](#-ports)
-  - [Permissions](#-permissions)
-  - [Network Mode](#-network-mode)
-  - [One-Liner Run Command](#-example-one-liner-run-command)
-  - [Docker Compose Example](#docker-compose-example)
-  - [Unraid Template](#-unraid-template)
-  - [Helm Chart](#-helm-chart)
-- [Single Sign-On (OpenID Connect)](#-single-sign-on-openid-connect)
-- [Desktop App](#-desktop-app)
-- [Build It Yourself](#-build-it-yourself)
-- [Resource Usage](#-resource-usage)
-- [Contributing](#-contributing)
-- [License](#-license)
+## Add a series from the command line
 
----
-
-## 🚀 Quick Start
+`tools/kaizoku_smart_add.py` searches every site, reads your folder and ranks the sites by how far they go and how recently they updated. The best one becomes the main source and the rest are kept as back-ups.
 
 ```bash
-docker run -d \
-  --name rensaio \
-  --network host \
-  -e PUID=99 -e PGID=100 -e UMASK=022 \
-  -v /path/to/config:/config \
-  -v /path/to/series:/series \
-  maxpiva/rensaio:latest
+python3 tools/kaizoku_smart_add.py "Chainsaw Man" --library /path/to/manga          # shows the plan
+python3 tools/kaizoku_smart_add.py "Chainsaw Man" --library /path/to/manga --apply  # adds it
 ```
 
-Open `http://<host-ip>:9833` and follow the setup wizard.
+It needs only Python 3.
 
-For Docker Compose, Unraid, or Kubernetes (Helm), see [Docker Support](#-docker-support).
+## Help and more reading
 
----
+* [FORK-NOTES.md](FORK-NOTES.md): every change in this fork and the files it touches
+* [docs/Original guide.md](docs/Original%20guide.md): the full Rensaiō guide, for single sign-on, Unraid, Helm and the rest
+* [Issues](https://github.com/Hikki-dev/Rensaio/issues): ask a question or report something that went wrong
 
-## 🎯 What It Does
+## Credits and licence
 
-Rensaiō is a **series manager** that prioritizes simplicity, speed, and reliability.
+All credit to maxpiva and the Rensaiō contributors, and to the Kaizoku authors before them. This fork changes only what is listed above. The licence is unchanged: GPL-3.0, see [LICENSE](LICENSE).
 
-It uses the power of  **MIHON extensions** to connect with multiple sources.
-
----
-
-## ✨ Key Features
-
-- 🧙‍♂️ **Startup Wizard**  
-  Automatically imports your existing library.
-
-- 🔁 **Temporary vs Permanent Sources**  
-  - Chapters are only downloaded from **temporary** sources when there is no permanent sources 
-  - Auto-deleted if a **permanent** source later provides them.
-
-- 🔎 **Multi-Search & Multi-Linking**  
-  Search and link one series to **multiple sources/providers**.
-
-- 📥 **Automatic Downloads**
-
-  Everything is automatic, Retries, Reschedules. With a dedicated download Page.
-
-- 🔄 **Auto-Updates**  
-  Extensions are kept up to date.
-
-- 👥 **Multi-User System**
-  Create separate accounts with different permission levels. Invite people, and control who has access to what. Optionally enable authentication to restrict access to authorized users only, with password login or [Single Sign-On](#-single-sign-on-openid-connect) through any OpenID Connect provider.
-
-- 🩺 **Status & Health Dashboard**
-  A dedicated page that shows which series and providers need attention. Color-coded alerts (green/yellow/red) help you spot issues at a glance like broken providers, stale series with no new chapters, and more.
-
-- 📡 **OPDS Server**
-  Read your library from any OPDS-compatible reader app. Browse by all series, what's new, what you're currently reading, categories, and tags. Reading progress syncs back automatically. Each user gets their own unique random OPDS path (e.g. `door-pebble`) for private access. Example: ```https://rensaio.example.com/door-pebble```
-
-- 🤖 **MCP Server (AI Integration)**
-  Expose your library to AI tools through the Model Context Protocol. Let LLMs search your series, check status, and more, all respecting user permissions. Just add /mcp to your OPDS path. Example: ```https://rensaio.example.com/door-pebble/mcp```
-
-- 📖 **Read State Tracking**
-  Remembers where you left off reading each chapter, across all your devices, backed in your series, not the database.
-
-- 🔗 **External Scrobbler Sync**
-  Sync your reading progress with external trackers. Supported providers: **AniList**, **MyAnimeList**, **Kitsu**, **MangaDex**. Each user controls their own connections and sync settings.
-
-- 🧹 **Filename Normalization**  
-  Rebuild your library easily with consistent naming, that will help you reimport it back when needed.
-
-- 🧾 **ComicInfo.xml Injection**  
-  Chapters include rich metadata from the original source.
-
-- 🖼️ **Extras**
-  - Stores `cover.jpg` per series
-  - Stores `rensaio.json` for full metadata mapping, and read-state stored with you series.
-  - External Domain Support for reverse proxy scenarios.
-  - Support for jxl, jp2, avif image formats, with real-time transcoding for clients not supporting them.
-  - And much more...
-
----
-
-## 🛠️ Under the Hood
-
-Rensaiō is composed of:
-
-- **Frontend**: A beautiful UI forked from [Kaizoku Next by OAE](https://github.com/oae/kaizoku/tree/next) (Next.js).
-- **Backend**: A custom .NET engine that manages schedules, downloads, metadata, OPDS/MCP servers, and scrobbler sync, with a Mihon Bridge that enables the use of Mihon Android extensions.
-
----
-
-## ⚙️ Issues
-
-- If you encounter any issues, check the `logs` folder. You can review the logs there or upload them to share feedback.
-
----
-
-## 🤔 Running Android libraries on .NET, is that possible?
-
-Only the **MIHON** extensions are actively maintained, and they are distributed as Android APKs. So we need to hack around that!
-
-By leveraging the Java/Android bridge originally created by the [Suwayomi](https://github.com/Suwayomi/Suwayomi-Server) team, and adapting parts of it to fit our use case, including replacing KCEF with JCEF Maven we can generate a Java 8 Android compatibility layer with all required Java dependencies included.
-
-Then use [IKVM](https://github.com/ikvmnet/ikvm) to run this on .NET.
-
----
-
-## 🐳 Docker Support
-
-- Available for both `amd64` and `arm64`.
-
-### 📁 Volumes
-
-| Container Path | Description                      |
-|----------------|----------------------------------|
-| `/config`      | Stores application configuration |
-| `/series`      | Stores series                    |
-
-### 🌐 Ports
-
-| Port  | Service         | Required | Notes                        |
-|-------|--------------|----------|------------------------------|
-| 9833  | Rensaiō UI   | ✅       | Web interface                |
-
-### 👤 Permissions
-
-| Variable | Value | Description                    |
-|----------|-------|--------------------------------|
-| `PUID`    | 99    | Host user ID                   |
-| `PGID`   | 100   | Host group ID                  |
-| `UMASK`  | 022   | File permission mask (default) |
-
-> Ensure the specified PUID and PGID have write access to your mounted `/config` and `/series` directories.
-
-### 🌐 Network Mode
-
-It is recommended to use **host networking** for optimal performance when downloading a lot and querying multiple providers in parallel. This applies to the Docker one-liner and Unraid template below; the Compose and Helm examples use bridged/`ClusterIP` networking instead since host networking isn't practical (or needed) in those environments.
-
-### 🚀 Example: One-Liner Run Command
-
-```bash
-docker run -d \
-  --name Rensaio \
-  --network host \
-  -p 9833:9833 \
-  -e PUID=99 \
-  -e PGID=100 \
-  -e UMASK=022 \
-  -v /path/to/your/config:/config \
-  -v /path/to/your/series:/series \
-  maxpiva/rensaio:latest
-```
-Replace /path/to/your/config and /path/to/your/series with real paths on your host.
-
-### Docker Compose Example
-
-Runnable file: [`examples/docker-compose.yml`](./examples/docker-compose.yml)
-
-```yaml
-services:
-  rensaio:
-    container_name: rensaio
-    image: 'maxpiva/rensaio:latest'
-    volumes:
-        - '/path/to/your/series:/series'
-        - '/path/to/your/config:/config'
-    environment:
-        - UMASK=022
-        - PGID=100
-        - PUID=99
-    ports:
-        - '9833:9833'
-```
-
-### 🧩 Unraid Template
-
-Template file: [`examples/unraid.xml`](./examples/unraid.xml)
-
-```xml
-<Container>
-  <Name>Rensaiō</Name>
-  <Repository>maxpiva/rensaio:latest</Repository>
-  <Registry>https://hub.docker.com/r/maxpiva/rensaio</Registry>
-  <Network>host</Network>
-  <MyID>rensaio</MyID>
-  <Shell>sh</Shell>
-  <Privileged>false</Privileged>
-  <Support>https://github.com/maxpiva/rensaio/issues</Support>
-  <Project>https://github.com/maxpiva/rensaio</Project>
-  <Overview>Rensaiō – a feature-complete series manager powered by Mihon extensions. </Overview>
-  <Category>MediaManager:Comics</Category>
-
-  <Config Name="Config Folder" Target="/config" Default="/mnt/user/appdata/rensaio" Mode="rw" Description="Path to store configuration, database, and settings." Type="Path" />
-  <Config Name="Series Folder" Target="/series" Default="/mnt/user/media/series" Mode="rw" Description="Path where series and chapters will be downloaded." Type="Path" />
-
-  <Config Name="PUID" Target="PUID" Default="99" Mode="rw" Description="User ID to run the container as." Type="Variable" />
-  <Config Name="PGID" Target="PGID" Default="100" Mode="rw" Description="Group ID to run the container as." Type="Variable" />
-  <Config Name="UMASK" Target="UMASK" Default="022" Mode="rw" Description="UMASK for file permissions." Type="Variable" />
-
-  <WebUI>http://[IP]:9833</WebUI>
-
-  <TemplateURL>https://raw.githubusercontent.com/maxpiva/rensaio/main/examples/unraid.xml</TemplateURL>
-  <Icon>https://raw.githubusercontent.com/maxpiva/rensaio/refs/heads/main/RensaioFrontend/public/rensaio.png</Icon>
-</Container>
-```
-
-### ⎈ Helm Chart
-
-A Helm chart is available at [`charts/rensaio`](./charts/rensaio) for running Rensaiō on Kubernetes. It deploys a single container, a `Service` on port `9833`, and PVCs for `/config` and `/series`.
-
-```bash
-helm dependency update ./charts/rensaio
-helm install rensaio ./charts/rensaio -n rensaio --create-namespace
-```
-
-Configure `PUID`/`PGID`/`UMASK`, image tag, PVC sizes/storage classes, and ingress via `values.yaml`. A sample override — existing PVC claims, a dedicated storage class, and ingress with TLS — is at [`examples/helm-values.yaml`](./examples/helm-values.yaml):
-
-```bash
-helm install rensaio ./charts/rensaio -n rensaio --create-namespace \
-  -f examples/helm-values.yaml
-```
-
----
-
-## 🔐 Single Sign-On (OpenID Connect)
-
-Rensaiō can log users in through any OpenID Connect provider (Authentik, Keycloak, Pocket ID, Authelia, Zitadel, ...). Password login keeps working alongside it, and OPDS / MCP access is unchanged because those use the per-user path, not the login.
-
-### Setup
-
-1. **Enable Authentication** in *Settings → Security* and set the **External Domain** (e.g. `https://rensaio.example.com`).
-2. At your identity provider, create an OIDC client:
-   - Type: *confidential* (with a client secret) or *public* (PKCE only, no secret). PKCE is always used.
-   - Redirect / callback URL: `https://rensaio.example.com/api/auth/oidc/callback`
-   - Scopes: `openid profile email` (add `groups` if you want group mapping)
-3. Back in *Settings → Security*, turn on **Single Sign-On**, fill in the **Issuer URL** (the provider's base URL, without `/.well-known/openid-configuration`), the **Client ID** and, for a confidential client, the **Client Secret**. Save.
-4. The login page now shows a **Single Sign-On** button.
-
-On first sign-in a user is matched to an existing Rensaiō account with the same username (exact match first, then case-insensitive if unambiguous) and linked to it. Later sign-ins use the link, so renaming the account is safe. If no account matches, sign-in is refused unless **auto-register** is on (see below). The **Owner** account is never linked and always logs in with its password.
-
-The client secret is write-only: the Settings page never displays it, and saving with the field empty keeps the stored value.
-
-### Advanced options (`appsettings.json` or environment variables)
-
-Everything beyond the four basics lives in the `Oidc` section of `appsettings.json`. Each key can also be set as an environment variable using the `Oidc__Key` form, which is convenient for Docker; environment variables override the file, and both override what is stored from the Settings page.
-
-| Key | Default | Description |
-| --- | --- | --- |
-| `Enabled`, `Issuer`, `ClientId`, `ClientSecret`, `ButtonLabel` | *(from Settings)* | Set here to manage them outside the UI; the Settings fields become read-only |
-| `Scopes` | `openid profile email groups` | Scopes requested from the provider |
-| `UsernameClaim` | `preferred_username` | Claim used as the Rensaiō username (falls back to `name`, then `email`) |
-| `GroupsClaim` | `groups` | Claim holding the user's groups |
-| `AdminGroup` | *(empty)* | Members get the **Admin** level on every login |
-| `ManagerGroup` | *(empty)* | Members get the **Manager** level on every login |
-| `DefaultLevel` | `User` | Level for auto-registered users, and for mapped users in neither group |
-| `AutoRegister` | `false` | Create a Rensaiō account on first sign-in when none matches |
-| `HidePasswordLogin` | `false` | Hide the username/password form and show only the SSO button |
-| `AutoRedirect` | `false` | Skip the login page and go straight to the provider |
-| `SyncAvatar` | `true` | Copy the provider's profile picture (`picture` claim) to the user's avatar on each login |
-| `RedirectUri` | *(derived)* | Override the callback URL when the External Domain is not what the provider sees |
-
-When `AdminGroup` or `ManagerGroup` is set, the user's level is re-evaluated on every login that carries the groups claim: in the admin group → Admin, in the manager group → Manager, otherwise `DefaultLevel`. A login without the groups claim leaves the level untouched. The **Owner** level is never granted by SSO.
-
-Docker example:
-
-```yaml
-environment:
-  - Oidc__Enabled=true
-  - Oidc__Issuer=https://id.example.com
-  - Oidc__ClientId=rensaio
-  - Oidc__ClientSecret=xxxxxxxx
-  - Oidc__AdminGroup=rensaio-admins
-  - Oidc__AutoRegister=true
-  - Oidc__HidePasswordLogin=true
-```
-
----
-
-## 🖥️ Desktop App
-
-- A **tray application** based on Avalonia is available in the [Releases](https://github.com/maxpiva/Rensaio/releases).
-- Currently tested only on **Windows**. Testers for Linux and macOS are welcome, as I'm unable to verify it myself.
-
----
-
-## 🧱 Build It Yourself
-
-Build scripts are provided for convenience:
-
-### Frontend
-```powershell
-.\build_frontend.ps1
-```
-Builds the Next.js frontend and packages it as `wwwroot.zip` for the backend to serve.
-
-### Docker Image
-```powershell
-.\build_docker.ps1
-```
-Restores and publishes the backend for `linux-x64` and `linux-arm64`, then builds and pushes a multi-arch Docker image.
-
-### Desktop Apps + Backend
-```powershell
-.\build_apps.ps1
-```
-Publishes the backend and tray app for `win-x64`, `win-arm64`, `linux-x64`, `linux-arm64`, and `osx-arm64`, then zips the tray binaries.
-
----
-
-## ⚠️ Resource Usage
-
-Be aware: **Rensaiō** can be **memory-intensive**, especially when managing large libraries or doing parallel searches and downloads.
-
-### WebView/CEF renderer processes (`jcef_helper`)
-
-Extensions that need a browser context (anti-bot / Cloudflare bypass via the `WebViewFetchInterceptor`) spawn Chromium renderer processes (`jcef_helper --type=renderer`), each consuming roughly 80–200 MB. To keep long-running instances from accumulating orphaned helpers and exhausting memory, Rensaiō bounds and reaps them automatically:
-
-| Knob | Default | Meaning |
-|------|---------|---------|
-| `cefMaxRenderers` | `4` | Hard cap on concurrently alive renderer processes **across all extensions**. Requests beyond the cap degrade to the direct network chain instead of spawning another helper. Also passed to CEF as `--max-render-processes`. |
-| `cefIdleTimeoutMs` | `300000` | Idle time (ms) before an unused pooled WebView's browser is destroyed by the watchdog sweep (5 minutes). |
-| `cefWebViewPoolEnabled` | `true` | Enables host-keyed WebView reuse (same host reuses the same browser/cookie context) instead of a fresh WebView per request. |
-
-These are configurable from Settings → Server (`cefMaxRenderers`, `cefIdleTimeoutMs`, `cefWebViewPoolEnabled`).
-
-**How it stays bounded:**
-1. The authoritative renderer budget (`RendererGate`) is enforced **inside the CEF WebView provider itself**, at browser creation — so the cap covers every WebView in the process, including extension-owned ones (e.g. Keiyoushi-style `runWebView`/`WebViewSession` helpers), not just the interceptor path. When the cap is reached the provider refuses to spawn another renderer; the interceptor pre-checks the budget and falls back to the direct network/FlareSolverr chain.
-2. WebViews are pooled per host (`WebViewPool`) instead of created per request, and are deterministically destroyed in a `finally` block on success/timeout/error — the old racy `postDelayed(destroy)` is gone.
-3. A time-gated watchdog sweep runs on the existing safe CEF pump path (the IKVM-attached daemon on Docker, the Avalonia UI thread on desktop) and evicts idle browsers, posting destruction to the main looper. It never calls JCEF from a raw thread.
-
-**Validation checklist (long-running instances):**
-- Run with several WebView-requiring sources active for 24–48 h.
-- Monitor with your platform's process tooling (`ps aux --sort=-%mem` on Linux/macOS, Task Manager on Windows); the number of `jcef_helper --type=renderer` processes should stay at or below `cefMaxRenderers` (plus a short transition window), not accumulate.
-- Watch the log for `Renderer budget exhausted` / `WebView pool saturated` — these indicate you may want to raise `cefMaxRenderers` on a memory-rich host, or lower it on a constrained one.
-- No manual process killing is needed on any platform: renderer processes are bounded by the budget and reaped automatically by the watchdog. If the process list ever looks wrong, the fix is to restart Rensaiō (a clean restart tears down CEF entirely), not to kill individual helper processes.
-
----
-
-## 🤝 Contributing
-
-### Frontend Devs ! You're Needed 🙏  
-Help clean up the mess left behind by our overenthusiastic friends, Copilot, Claude and ~~Fable~~ (banned).
-
-### Backend Devs ! PRs Welcome  
-
-PRs are welcome to improve stability and architecture.
-
----
-
-## 📄 License
-
-Licensed under the [GNU General Public License v3.0](./LICENSE).
-
----
-
-## 🏴‍☠️ Brace Yourself
-
-This app *just works™*  until it doesn't. But it's here.
-Start managing your series with the style it deserves.
+Manga sources are third-party sites. Use this only for content you have the right to download.
