@@ -46,4 +46,6 @@ public class ChapterDownload : DownloadSummaryBase, IBridgeItemInfo
 
     public List<Page> Pages { get; set; }= [];
     public bool IsUpdate { get; set; } = false;
+    /// <summary>Sources that already failed this chapter; failover never goes back to them.</summary>
+    public List<Guid> TriedProviders { get; set; } = [];
 }

@@ -416,14 +416,86 @@ namespace RensaioBackend.Services.Downloads
                     _logger.LogInformation("Provider {Provider}:{Lang}{scanlator} has {newCount} new Chapters for Series '{Title}'.", serie.Provider, serie.Language, scanlator, newCount, serie.Title);
                 }
 
+                // a chapter another source of this series is already downloading (or about to) is not queued again:
+                // one chapter, one site
+                string seriesKey = serie.SeriesId.ToString();
+                var pendingJobs = await _db.Queues.AsNoTracking()
+                    .Where(q => q.JobType == JobType.Download && q.ExtraKey == seriesKey && (q.Status == QueueStatus.Waiting || q.Status == QueueStatus.Running))
+                    .Select(q => q.JobParameters).ToListAsync(token).ConfigureAwait(false);
+                List<(Guid provider, decimal? number)> pending = [];
+                foreach (string? pj in pendingJobs)
+                {
+                    try
+                    {
+                        ChapterDownload? pd = string.IsNullOrEmpty(pj) ? null : JsonSerializer.Deserialize<ChapterDownload>(pj);
+                        if (pd != null)
+                            pending.Add((pd.SeriesProviderId, pd.Chapter.ParsedNumber));
+                    }
+                    catch (JsonException) { }
+                }
                 foreach (ChapterDownload ch in chaps.OrderBy(a => a.Index))
                 {
+                    if (!ch.IsUpdate && pending.Any(p => p.provider != ch.SeriesProviderId && p.number == ch.Chapter.ParsedNumber))
+                    {
+                        _logger.LogInformation("Chapter {ChapterNumber} of '{Title}' is already being downloaded from another source; skipping {Provider}.", ch.Chapter.ParsedNumber, ch.Title, ch.ProviderName);
+                        continue;
+                    }
                     string key = $"{ch.MihonId}|{ch.Index}";
                     string groupKey = $"{ch.ProviderName}";
                     await _jobManagementService.EnqueueJobAsync(JobType.Download, ch, Priority.Normal, key, groupKey, ch.SeriesId.ToString(), "Downloads", token).ConfigureAwait(false);
                 }
             }
             return JobResult.Success;
+        }
+
+        private const int FailoverAfterRetries = 1;
+        private const int MaxFailoverSourceErrors = 3;
+
+        /// <summary>
+        /// Hands a chapter that keeps failing to another source of the same series that lists it and is healthy.
+        /// </summary>
+        private async Task<bool> TryFailoverAsync(ChapterDownload failed, CancellationToken token)
+        {
+            try
+            {
+                if (!failed.TriedProviders.Contains(failed.SeriesProviderId))
+                    failed.TriedProviders.Add(failed.SeriesProviderId);
+                decimal? number = failed.Chapter.ParsedNumber;
+                if (number == null)
+                    return false;
+                Models.Database.SeriesEntity? series = await _db.Series.AsNoTracking().FirstOrDefaultAsync(s => s.Id == failed.SeriesId, token).ConfigureAwait(false);
+                if (series == null || series.PauseDownloads)
+                    return false;
+                List<SeriesProviderEntity> siblings = await _db.SeriesProviders.AsNoTracking()
+                    .Where(p => p.SeriesId == failed.SeriesId && !p.IsDisabled && !p.IsUninstalled && p.ConsecutiveErrorCount < MaxFailoverSourceErrors)
+                    .ToListAsync(token).ConfigureAwait(false);
+                foreach (SeriesProviderEntity sib in siblings
+                    .Where(p => !failed.TriedProviders.Contains(p.Id) && !string.IsNullOrEmpty(p.MihonProviderId) && p.Chapters.Any(c => c.Number == number))
+                    .OrderByDescending(p => p.IsStorage).ThenByDescending(p => p.LastSuccessfulFetchDate))
+                {
+                    ISourceInterop src = await _mihon.SourceFromProviderIdAsync(sib.MihonProviderId!, token).ConfigureAwait(false);
+                    Manga? manga = sib.ToManga();
+                    if (manga == null)
+                        continue;
+                    List<ParsedChapter>? list = await _mihon.MihonErrorWrapperLockedAsync(() => src.GetChaptersAsync(manga, token),
+                        "Unable to get Chapters from {series} from {provider}", src.Id + "|" + manga.Url, sib.Title, sib.Provider).ConfigureAwait(false);
+                    ParsedChapter? match = list?.FirstOrDefault(c => c.ParsedNumber == number
+                        && (string.IsNullOrEmpty(sib.Scanlator) || sib.Scanlator == sib.Provider || c.Scanlator == sib.Scanlator || string.IsNullOrEmpty(c.Scanlator)));
+                    if (match == null)
+                        continue;
+                    ChapterDownload next = series.ToDownloads(sib, [match], series.StoragePath).First();
+                    next.TriedProviders = [.. failed.TriedProviders];
+                    await _jobManagementService.EnqueueJobAsync(JobType.Download, next, Priority.Normal, $"{next.MihonId}|{next.Index}", next.ProviderName,
+                        next.SeriesId.ToString(), "Downloads", token).ConfigureAwait(false);
+                    _logger.LogWarning("Chapter {ChapterNumber} of '{Title}' failed on {From}; trying {To} instead.", number, failed.Title, failed.ProviderName, sib.Provider);
+                    return true;
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Source failover for chapter {ChapterNumber} of '{Title}' did not work; keeping the normal retries.", failed.Chapter.ParsedNumber, failed.Title);
+            }
+            return false;
         }
 
         /// <summary>
@@ -437,6 +509,11 @@ namespace RensaioBackend.Services.Downloads
             SettingsDto appSettings = await _settings.GetSettingsAsync(token).ConfigureAwait(false);
             download.Retries++;
             string key = $"{download.MihonId}|{download.Index}";
+
+            // After a failure, give the chapter to the next working source of the same series instead of
+            // waiting hours on one that is down. Only if no other source can take it do the normal retries go on.
+            if (download.Retries >= FailoverAfterRetries && await TryFailoverAsync(download, token).ConfigureAwait(false))
+                return JobResult.Handled;
 
             if (download.Retries > appSettings.ChapterDownloadFailRetries)
             {

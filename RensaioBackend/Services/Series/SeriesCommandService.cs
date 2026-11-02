@@ -119,6 +119,16 @@ namespace RensaioBackend.Services.Series
                     ProviderSeriesDetails.StorageFolderPath, ProviderSeriesDetails.DisableJobs, ProviderSeriesDetails.StartChapter, token).ConfigureAwait(false);
                 
                 existingProviders.ForEach(a => a.SeriesId = dbSeries.Id);
+                // chapters already in the folder count as downloaded: never fetched again, gaps still filled
+                try
+                {
+                    int onDisk = DiskChapterScanner.MarkExisting(existingProviders, Path.Combine(settings.StorageFolder, dbSeries.StoragePath), _logger);
+                    foreach (var p in existingProviders) _db.Touch(p, a => a.Chapters);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Could not read the existing chapters of '{title}'; adding it without.", dbSeries.Title);
+                }
                 existingProviders.CalculateContinueAfterChapter(ProviderSeriesDetails.StartChapter);
                 
                 // Populate Pages and PageCount for all chapters from physical archive files
@@ -621,6 +631,11 @@ namespace RensaioBackend.Services.Series
                 long fetchedSeries = 0;
                 int page = 1;
                 bool upToDate = false;
+                // Circuit breaker: when a source is down it answers every title with an error. Without this
+                // the pass retries tens of thousands of titles (hours of CPU). Stop after a run of failures.
+                const int MaxConsecutiveFailures = 15;
+                int consecutiveFailures = 0;
+                bool providerDown = false;
                 bool neverDone = latestDates.Count == 0;
                 ISourceInterop src;
                 try
@@ -662,7 +677,7 @@ namespace RensaioBackend.Services.Series
                     },
                         async (ss, b) =>
                         {
-                            if (upToDate)
+                            if (upToDate || providerDown)
                                 return;
                             ComboSeries combo = new ComboSeries();
                             string mihonId = mihonProviderId + "|" + ss.Url;
@@ -679,7 +694,12 @@ namespace RensaioBackend.Services.Series
                                     () => src.GetDetailsAndChaptersAsync(ss, token),
                                     "Unable to get Series {Title} from {provider}", mangaLockKey, failureBreakdown, ss.Title, provider).ConfigureAwait(false);
                                 if (update == null)
+                                {
+                                    if (Interlocked.Increment(ref consecutiveFailures) >= MaxConsecutiveFailures)
+                                        providerDown = true;
                                     return;
+                                }
+                                Interlocked.Exchange(ref consecutiveFailures, 0);
                                 fetchedSeries++;
                                 combo.Series = update.Manga;
                                 combo.Chapters = update.Chapters;
@@ -696,8 +716,11 @@ namespace RensaioBackend.Services.Series
                                 if (chaps == null)
                                 {
                                     newChaps.Remove(mihonId, out _);
+                                    if (Interlocked.Increment(ref consecutiveFailures) >= MaxConsecutiveFailures)
+                                        providerDown = true;
                                     return;
                                 }
+                                Interlocked.Exchange(ref consecutiveFailures, 0);
                                 fetchedSeries++;
                                 combo.Chapters = chaps;
                                 newChaps[mihonId] = combo;
@@ -713,6 +736,11 @@ namespace RensaioBackend.Services.Series
                                 }
                             }
                         }).ConfigureAwait(false);
+                    if (providerDown)
+                    {
+                        _logger.LogWarning("Provider {provider} looks down ({count} failures in a row). Stopping this pass; it will be tried again on the next schedule.", provider, MaxConsecutiveFailures);
+                        break;
+                    }
                     if (upToDate)
                         break;
                     page++;

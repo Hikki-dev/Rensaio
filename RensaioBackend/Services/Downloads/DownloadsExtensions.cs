@@ -104,9 +104,14 @@ public static class DownloadsExtensions
             }
             else
             {
+                // a permanent source skips what it already has AND what any other source already holds,
+                // so one chapter is never downloaded from two sites
                 List<decimal?> exists = serie.Chapters
                     .Where(c => c.Filename != null)
-                    .Select(c => c.Number).ToList();
+                    .Select(c => c.Number)
+                    .Concat(allSeries.Where(o => o.Id != serie.Id && !o.IsDisabled && !o.IsUninstalled)
+                        .SelectMany(o => o.Chapters).Where(c => !string.IsNullOrEmpty(c.Filename) && !c.IsDeleted).Select(c => c.Number))
+                    .ToList();
                 wanted = wanted.Where(c => !exists.Contains(c.ParsedNumber)).ToList();
             }
 
