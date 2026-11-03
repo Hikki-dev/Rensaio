@@ -69,7 +69,8 @@ public static class DownloadsExtensions
             }
 
             // extras, bonus pages, one-shots and re-uploads (10.5, 1046.555, "Vol.19: Bonus") are not downloaded
-            wanted = wanted.Where(c => ChapterFilter.IsMainChapter(c.ParsedNumber, c.Name)).ToList();
+            HashSet<decimal> wholeListed = wanted.Select(c => c.ParsedNumber).Where(n => n == decimal.Truncate(n)).ToHashSet();
+            wanted = wanted.Where(c => ChapterFilter.IsMainChapter(c.ParsedNumber, c.Name, wholeListed)).ToList();
 
             foreach (ParsedChapter c in wanted)
             {

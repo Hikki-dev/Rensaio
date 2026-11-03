@@ -15,13 +15,20 @@ public static class ChapterFilter
     public static bool AllowFractions { get; set; } =
         string.Equals(Environment.GetEnvironmentVariable("RENSAIO_ALLOW_FRACTIONAL_CHAPTERS"), "true", StringComparison.OrdinalIgnoreCase);
 
-    public static bool IsMainChapter(decimal number, string? name) => IsMainChapter(number, name, AllowFractions);
+    /// <summary>
+    /// A listed chapter is wanted when it is a whole number, or a part of a chapter (24.1, 24.2) that has no whole chapter
+    /// of its own in the list. A number with a fraction next to its whole chapter (10 and 10.5, 1046 and 1046.555) is an
+    /// extra or a re-upload. Names such as "Vol.19: Bonus" or "Oneshot" are never wanted.
+    /// </summary>
+    /// <param name="wholeChaptersListed">the whole chapter numbers this site lists for the series</param>
+    public static bool IsMainChapter(decimal number, string? name, ISet<decimal> wholeChaptersListed) =>
+        IsMainChapter(number, name, wholeChaptersListed, AllowFractions);
 
-    public static bool IsMainChapter(decimal number, string? name, bool allowFractions)
+    public static bool IsMainChapter(decimal number, string? name, ISet<decimal> wholeChaptersListed, bool allowFractions)
     {
         if (number < 0)
             return false;
-        if (!allowFractions && number != decimal.Truncate(number))
+        if (!allowFractions && number != decimal.Truncate(number) && wholeChaptersListed.Contains(decimal.Truncate(number)))
             return false;
         if (!string.IsNullOrWhiteSpace(name) && !Regular.IsMatch(name) && Extra.IsMatch(name))
             return false;

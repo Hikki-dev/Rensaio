@@ -23,11 +23,12 @@ if (ChapterNameParser.ScanFolder(Path.Combine(dir, "missing")).Count != 0) { Con
 Directory.Delete(dir, true);
 foreach (var (name, want) in cases) { var got = ChapterNameParser.ChapterOf(name); if (got != want) { Console.WriteLine($"FAIL {name}: got {got}, want {want}"); bad++; } }
 // which listed chapters are real chapters
-void Main_(decimal n, string? name, bool want, string label, bool frac = false) { if (ChapterFilter.IsMainChapter(n, name, frac) != want) { Console.WriteLine($"FAIL filter {label}"); bad++; } }
+void Main_(decimal n, string? name, bool want, string label, bool frac = false, params decimal[] whole) { if (ChapterFilter.IsMainChapter(n, name, new HashSet<decimal>(whole), frac) != want) { Console.WriteLine($"FAIL filter {label}"); bad++; } }
 Main_(5, "Chapter 5", true, "plain chapter"); Main_(5, null, true, "no name"); Main_(1197, "Chapter 1197: Title", true, "title");
-Main_(10.5m, "Chapter 10.5", false, "half chapter off by default"); Main_(10.5m, "Chapter 10.5", true, "half chapter allowed", true);
-Main_(1046.555m, "Chapter 1046.555", false, "nonsense fraction"); Main_(187, "Bounus.187.5", false, "bonus by name");
-Main_(19, "Vol.19: Bonus: Reality Strikes", false, "volume bonus"); Main_(6, "Oneshot: Young Jump Special 6", false, "oneshot");
+Main_(10.5m, "Chapter 10.5", false, "half chapter next to its whole chapter", false, 10); Main_(10.5m, "Chapter 10.5", true, "half chapter allowed on request", true, 10);
+Main_(1046.555m, "Chapter 1046.555", false, "nonsense fraction next to its chapter", false, 1046); Main_(1.1m, "Chapter 1.1", false, "re-upload part", false, 1);
+Main_(24.1m, "Chapter 24.1", true, "part of a chapter that has no whole chapter", false, 23, 25); Main_(24.2m, "Chapter 24.2", true, "second part", false, 23, 25);
+Main_(187, "Bounus.187.5", false, "bonus by name"); Main_(19, "Vol.19: Bonus: Reality Strikes", false, "volume bonus"); Main_(6, "Oneshot: Young Jump Special 6", false, "oneshot");
 Main_(0, "Vol.tbd Extras", false, "extras"); Main_(4, "Vol.4 Entracte: Chambre", false, "volume extra");
 Main_(12, "Chapter 12: Special Training", true, "a title that says special is still a chapter"); Main_(12, "Ch.12 - Bonus Round", true, "chapter word wins");
 Main_(1, "Vol.1 Ch.1 - A Dog and a Chainsaw", true, "MangaDex style name"); Main_(230, "Vol.23 Chapter 230", true, "volume and chapter");
