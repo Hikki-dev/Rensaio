@@ -68,6 +68,9 @@ public static class DownloadsExtensions
                 wanted = wanted.Where(a => a.Scanlator == serie.Scanlator).ToList();
             }
 
+            // extras, bonus pages, one-shots and re-uploads (10.5, 1046.555, "Vol.19: Bonus") are not downloaded
+            wanted = wanted.Where(c => ChapterFilter.IsMainChapter(c.ParsedNumber, c.Name)).ToList();
+
             foreach (ParsedChapter c in wanted)
             {
                 if (c.DateUpload > DateTimeOffset.UtcNow.AddYears(1000))

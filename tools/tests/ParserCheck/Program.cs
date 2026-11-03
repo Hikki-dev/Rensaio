@@ -22,6 +22,16 @@ if (scan[3] != "S - Ch.2-3.cbz") { Console.WriteLine("FAIL first file should win
 if (ChapterNameParser.ScanFolder(Path.Combine(dir, "missing")).Count != 0) { Console.WriteLine("FAIL missing folder"); bad++; }
 Directory.Delete(dir, true);
 foreach (var (name, want) in cases) { var got = ChapterNameParser.ChapterOf(name); if (got != want) { Console.WriteLine($"FAIL {name}: got {got}, want {want}"); bad++; } }
+// which listed chapters are real chapters
+void Main_(decimal n, string? name, bool want, string label, bool frac = false) { if (ChapterFilter.IsMainChapter(n, name, frac) != want) { Console.WriteLine($"FAIL filter {label}"); bad++; } }
+Main_(5, "Chapter 5", true, "plain chapter"); Main_(5, null, true, "no name"); Main_(1197, "Chapter 1197: Title", true, "title");
+Main_(10.5m, "Chapter 10.5", false, "half chapter off by default"); Main_(10.5m, "Chapter 10.5", true, "half chapter allowed", true);
+Main_(1046.555m, "Chapter 1046.555", false, "nonsense fraction"); Main_(187, "Bounus.187.5", false, "bonus by name");
+Main_(19, "Vol.19: Bonus: Reality Strikes", false, "volume bonus"); Main_(6, "Oneshot: Young Jump Special 6", false, "oneshot");
+Main_(0, "Vol.tbd Extras", false, "extras"); Main_(4, "Vol.4 Entracte: Chambre", false, "volume extra");
+Main_(12, "Chapter 12: Special Training", true, "a title that says special is still a chapter"); Main_(12, "Ch.12 - Bonus Round", true, "chapter word wins");
+Main_(1, "Vol.1 Ch.1 - A Dog and a Chainsaw", true, "MangaDex style name"); Main_(230, "Vol.23 Chapter 230", true, "volume and chapter");
+Main_(-1, "x", false, "negative"); Main_(0, "Prologue", true, "prologue is chapter 0");
 // gap repair
 static string Gaps(decimal[] listed, decimal[] held, decimal[] disk, decimal? after, int max = 25) => string.Join(",", GapRepair.Pick(listed, held, disk, after, max));
 decimal[] R(int a, int b) => Enumerable.Range(a, b - a + 1).Select(n => (decimal)n).ToArray();

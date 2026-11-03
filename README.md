@@ -28,7 +28,7 @@ You do not need to know how manga sources work. Add a series, and it looks after
 
 ## What is different
 
-Everything Rensaiō does is still here. These six things changed.
+Everything Rensaiō does is still here. These seven things changed.
 
 | Situation | The original | This fork |
 |---|---|---|
@@ -36,6 +36,7 @@ Everything Rensaiō does is still here. These six things changed.
 | Several sites have the same chapter | Each one can download it | One site per chapter. The others skip it while it is queued or already there |
 | A site fails on a chapter | Tries the same site again and again, for hours | Moves to the next working site that has it, straight away, and never goes back to one that failed |
 | A site is down | Tries every title on it, tens of thousands of requests | Stops after 15 failures in a row and tries again on the next schedule |
+| A site lists extras next to the chapters (10.5, 1046.555, "Vol.19: Bonus", one-shots) | Downloads all of them, so a series ends up with far more files than it has chapters, some with the same number twice | Only real chapters are downloaded: whole numbers, and nothing named bonus, extra, one-shot or volume page. Set `RENSAIO_ALLOW_FRACTIONAL_CHAPTERS=true` if you also want chapters like 10.5 |
 | One download hangs | It keeps its place for ever, and when every place hangs nothing downloads any more | After 45 minutes it is stopped and tried again later, so the queue always moves |
 | A chapter is missing in the middle of a series you follow | Stays missing for good | Filled in, a few at a time, from any site that has it. It never reaches back before your first chapter, and a chapter you removed on purpose is not brought back |
 
