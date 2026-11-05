@@ -26,7 +26,7 @@ public class EditableSettingsDto
     public TimeSpan ExtensionsCheckForUpdateSchedule { get; set; }
 
     [JsonPropertyName("categorizedFolders")]
-    public bool CategorizedFolders { get; set; } = true;
+    public bool CategorizedFolders { get; set; } = false;
     [JsonPropertyName("categories")]
     public string[] Categories { get; set; } = [];
     [JsonPropertyName("flareSolverrEnabled")]

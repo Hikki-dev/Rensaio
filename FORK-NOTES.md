@@ -12,6 +12,8 @@ What is changed, all in RensaioBackend:
 4b. Services/Downloads/GapRepair.cs (new) and DownloadsExtensions.cs: chapters missing between the lowest and highest one you own (and not on disk) are fetched, up to 25 per run. Pure rule, checked in tools/tests/ParserCheck.
 4. Services/Series/SeriesCommandService.cs UpdateSourceAsync: a source that fails 15 titles in a row stops the pass (it used to retry tens of thousands of titles).
 
+5. `CategorizedFolders` is off by default (`appsettings.json`, `EditableSettingsDto.cs`): every series is saved straight in the library folder (`/series/<Title>`) instead of in `Manga/`, `Manhwa/` subfolders, so a new install has one manga folder. Existing libraries keep what their settings say.
+
 tools/kaizoku_smart_add.py: add a series from the best source, from the command line.
 
 Image: ghcr.io/hikki-dev/rensaio:latest (amd64 and arm64), built by .github/workflows/image.yml on every change to the app.
