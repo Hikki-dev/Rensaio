@@ -20,3 +20,5 @@ Run it like the upstream image, for example:
   docker run -d --name kaizoku -p 9833:9833 -e PUID=1000 -e PGID=1000 -v /path/config:/config -v /path/manga:/series ghcr.io/hikki-dev/rensaio:latest
 
 From the original Kaizoku 2.0 image: stop it, back up the config folder, and start this image on the same folders. The database is migrated on first start.
+
+Keeping up with the original: a workflow (.github/workflows/upstream-sync.yml) runs every Monday, merges maxpiva/Rensaio main into a branch and opens a pull request if it merges cleanly and the chapter checks pass, or an issue if not. By hand: git fetch upstream main && git merge upstream/main.
