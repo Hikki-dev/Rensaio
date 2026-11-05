@@ -154,7 +154,8 @@ namespace Mihon.ExtensionsBridge.Core.Services
 
                 _logger.LogInformation("Resolved repository index at: {ResolvedUrl}", usedUrl);
 
-                await using var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
+                // Read it into memory so the old-format attempt below starts from the beginning after the new-format attempt has failed.
+                var stream = new MemoryStream(await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false));
                 try
                 {
                     var extensions2 = await JsonSerializer.DeserializeAsync<TachiyomiRepositoryV2>(stream, new JsonSerializerOptions
@@ -166,6 +167,7 @@ namespace Mihon.ExtensionsBridge.Core.Services
                 }
                 catch(Exception)
                 {
+                    stream.Position = 0;
                     var extensions = await JsonSerializer.DeserializeAsync<List<TachiyomiExtension>>(stream, new JsonSerializerOptions
                     {
                         PropertyNameCaseInsensitive = true

@@ -22,3 +22,7 @@ Run it like the upstream image, for example:
 From the original Kaizoku 2.0 image: stop it, back up the config folder, and start this image on the same folders. The database is migrated on first start.
 
 Keeping up with the original: a workflow (.github/workflows/upstream-sync.yml) runs every Monday, merges maxpiva/Rensaio main into a branch and opens a pull request if it merges cleanly and the chapter checks pass, or an issue if not. By hand: git fetch upstream main && git merge upstream/main.
+
+## Extension list refresh
+
+When an extension repository serves the older list format, the reader's second attempt started from the wrong place in the file and the refresh failed. The file is now read into memory and rewound between attempts (`Mihon.ExtensionsBridge.Core/Services/RepositoryDownloader.cs`).
