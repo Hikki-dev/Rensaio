@@ -98,7 +98,7 @@ It needs only Python 3.
 ## Help and more reading
 
 * [FORK-NOTES.md](FORK-NOTES.md): every change in this fork and the files it touches
-* [docs/Original guide.md](docs/Original%20guide.md): the full Rensaiō guide, for single sign-on, Unraid, Helm and the rest
+* [docs/README.md](docs/README.md): the original Rensaiō guides for installing, configuring (single sign-on, resources), Unraid, Helm and troubleshooting
 * [Issues](https://github.com/Hikki-dev/Rensaio/issues): ask a question or report something that went wrong
 
 ## Credits and licence
