@@ -52,10 +52,11 @@ namespace RensaioBackend.Services.Helpers
             SettingsDto settings = await _settings.GetSettingsAsync(token).ConfigureAwait(false);
             if (string.IsNullOrEmpty(series.ThumbnailUrl) || series.ThumbnailUrl.Contains("unknown"))
                 return;
-            string? key = await _thumbs.AddUrlAsync(series.ThumbnailUrl, null, token).ConfigureAwait(false);
-            if (string.IsNullOrEmpty(key)) 
+            // AddUrlAsync hands back the cache entry's URL, not its key, so look the entry up by URL.
+            string? url = await _thumbs.AddUrlAsync(series.ThumbnailUrl, null, token).ConfigureAwait(false);
+            if (string.IsNullOrEmpty(url))
                 return;
-            var cache = await _thumbs.GetEtagAsync(key, token).ConfigureAwait(false);
+            var cache = await _db.ETagCache.AsNoTracking().FirstOrDefaultAsync(e => e.Url == url, token).ConfigureAwait(false);
             if (cache == null)
                 return;
             Stream? coverStream = await _thumbs.GetStreamAsync(cache, token).ConfigureAwait(false);
