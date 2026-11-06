@@ -27,6 +27,7 @@ public class ChapterDownload : DownloadSummaryBase, IBridgeItemInfo
     }
     public string ChapterName { get; set; } = string.Empty;
     public string SeriesTitle { get; set; } = "";
+    public string Description { get; set; } = "";
 
     public int Retries { get; set; }
 

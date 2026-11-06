@@ -153,6 +153,7 @@ namespace RensaioBackend.Services.Series
                 {
                     await _archiveHelper.WriteComicThumbnailAsync(dbSeries, token).ConfigureAwait(false);
                 }
+                await _archiveHelper.EnsureSeriesFilesAsync(dbSeries, token).ConfigureAwait(false);
 
                 // Fire-and-forget on-add metadata automatch. The transaction is committed and the
                 // series row is guaranteed to exist, so the app-wide MetadataLinkEngine can safely

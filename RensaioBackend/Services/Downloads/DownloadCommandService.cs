@@ -40,6 +40,7 @@ namespace RensaioBackend.Services.Downloads
         private readonly ILogger<DownloadCommandService> _logger;
         private readonly Series.SeriesStateService _stateService;
         private readonly HashCacheService _hashCache;
+        private readonly Helpers.ArchiveHelperService _archiveHelper;
         private static readonly KeyedAsyncLock _lock = new KeyedAsyncLock();
 
         public DownloadCommandService(
@@ -52,8 +53,10 @@ namespace RensaioBackend.Services.Downloads
             IConfiguration config,
             ILogger<DownloadCommandService> logger,
             Series.SeriesStateService stateService,
-            HashCacheService hashCache)
+            HashCacheService hashCache,
+            Helpers.ArchiveHelperService archiveHelper)
         {
+            _archiveHelper = archiveHelper;
             _mihon = mihon;
             _db = db;
             _settings = settings;
@@ -289,6 +292,7 @@ namespace RensaioBackend.Services.Downloads
                     await _db.SaveChangesAsync(token).ConfigureAwait(false);
 
                     Models.Database.SeriesEntity s = await _db.Series.Include(a => a.Sources).Where(a => a.Id == providerr.SeriesId).FirstAsync(token);
+                    await _archiveHelper.EnsureSeriesFilesAsync(s, token).ConfigureAwait(false); // cover and series.json for Komga, only when missing
                     if (providerr.IsStorage)
                     {
                         List<Models.Chapter> chapters = s.Sources.Where(a => !a.IsDisabled && !a.IsUninstalled && !a.IsStorage)

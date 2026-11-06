@@ -1,5 +1,6 @@
 using RensaioBackend.Services.Downloads;
 using RensaioBackend.Services.Series;
+using RensaioBackend.Services.Helpers;
 var cases = new (string name, decimal? want)[] {
     ("Chainsaw Man - Ch.230.cbz", 230), ("Chainsaw Man - Vol.23 Ch.229.cbz", 229), ("[MangaKatana][en] Chainsaw Man 231.cbz", 231),
     ("One Piece - Chapter 1000.cbz", 1000), ("Title Ch.12.5.cbz", 12.5m), ("Title c045.cbz", 45), ("Title - 7 v2.cbz", 7),
@@ -91,4 +92,20 @@ Expect(Gaps([2, 2, 3], [1, 4], [], 4), "2,3", "duplicate listings");
         Directory.Delete(root, true);
     }
 }
+// ComicInfo values Komga reads
+Expect(ComicMetadata.AgeRating(["Action", "Hentai"]), "Adults Only 18+", "adult genre");
+Expect(ComicMetadata.AgeRating(["Smut"]), "Adults Only 18+", "smut");
+Expect(ComicMetadata.AgeRating(["Action", "Ecchi"]), "Mature 17+", "ecchi");
+Expect(ComicMetadata.AgeRating(["Action", "Comedy"]), "", "no age limit");
+Expect(ComicMetadata.AgeRating(null), "", "no genres");
+Expect(ComicMetadata.AgeRating(["ADULT"]), "Adults Only 18+", "case");
+Expect(ComicMetadata.MangaFlag("Manga", []), "YesAndRightToLeft", "manga reads right to left");
+Expect(ComicMetadata.MangaFlag("Manhwa", []), "Yes", "manhwa");
+Expect(ComicMetadata.MangaFlag("Manhua", []), "Yes", "manhua");
+Expect(ComicMetadata.MangaFlag("Comic", ["manga"]), "", "a comic stays a comic");
+Expect(ComicMetadata.MangaFlag(null, ["Manga"]), "YesAndRightToLeft", "no type, manga genre");
+Expect(ComicMetadata.MangaFlag(null, []), "", "nothing known");
+Expect(ComicMetadata.Summary("<p>Hello &amp; <b>bye</b></p>"), "Hello & bye", "html summary");
+Expect(ComicMetadata.Summary("  "), "", "blank summary");
+Expect(ComicMetadata.Summary(new string('x', 5000)).Length.ToString(), "4000", "long summary is cut");
 Console.WriteLine(bad == 0 ? "parser ok" : $"{bad} failed"); return bad;

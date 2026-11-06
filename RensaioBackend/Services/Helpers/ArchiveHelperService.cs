@@ -67,6 +67,48 @@ namespace RensaioBackend.Services.Helpers
         }
 
 
+        /// <summary>
+        /// Makes sure the series folder has what Komga reads for the series itself: a cover and a
+        /// Mylar series.json (title, summary, status, age rating). Existing files are never replaced.
+        /// </summary>
+        public async Task EnsureSeriesFilesAsync(Models.Database.SeriesEntity series, CancellationToken token = default)
+        {
+            try
+            {
+                SettingsDto settings = await _settings.GetSettingsAsync(token).ConfigureAwait(false);
+                string dir = Path.Combine(settings.StorageFolder, series.StoragePath);
+                if (!Directory.Exists(dir))
+                    return;
+                if (!File.Exists(Path.Combine(dir, "cover.jpg")))
+                    await WriteComicThumbnailAsync(series, token).ConfigureAwait(false);
+                string json = Path.Combine(dir, "series.json");
+                if (!File.Exists(json))
+                {
+                    var doc = new
+                    {
+                        version = "1.0.2",
+                        metadata = new
+                        {
+                            type = "comicSeries",
+                            publisher = series.Sources.FirstOrDefault(s => !s.IsUnknown)?.Provider ?? "",
+                            name = series.Title,
+                            description_text = ComicMetadata.Summary(series.Description),
+                            booktype = "Print",
+                            age_rating = ComicMetadata.AgeRating(series.Genre) is { Length: > 0 } a ? a : null,
+                            comic_image = "cover.jpg",
+                            total_issues = series.ChapterCount,
+                            status = series.Status == SeriesStatus.COMPLETED || series.Status == SeriesStatus.PUBLISHING_FINISHED ? "Ended" : "Continuing"
+                        }
+                    };
+                    await File.WriteAllTextAsync(json, System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions { WriteIndented = true }), token).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not write the series files for {Title}", series.Title);
+            }
+        }
+
         public async Task UpdateTitleAndAddComicInfoAsync(Guid seriesId, bool onlyDownloadByRensaio = true,
          CancellationToken token = default)
         {
@@ -165,7 +207,9 @@ namespace RensaioBackend.Services.Helpers
                         {
                             if (oldComicInfo.Notes != null && oldComicInfo.Notes.Contains("Rensaio"))
                             {
-                                if (oldComicInfo.Series == newComicInfo.Series && oldComicInfo.LocalizedSeries == newComicInfo.LocalizedSeries)
+                                if (oldComicInfo.Series == newComicInfo.Series && oldComicInfo.LocalizedSeries == newComicInfo.LocalizedSeries
+                                    && oldComicInfo.Summary == newComicInfo.Summary && oldComicInfo.Manga == newComicInfo.Manga
+                                    && oldComicInfo.AgeRating == newComicInfo.AgeRating && oldComicInfo.Genre == newComicInfo.Genre)
                                 {
                                     //Already fixed.
                                     continue;
@@ -469,11 +513,12 @@ namespace RensaioBackend.Services.Helpers
                 info.Year = chap.ProviderUploadDate.Value.Year;
             }
 
-            string type = s.Type?.Trim().ToLowerInvariant() ?? "";
-            if (type == "manga" || s.Genre.Contains("manga", StringComparer.InvariantCultureIgnoreCase))
-            {
-                info.Manga = "YesAndRightToLeft";
-            }
+            info.Manga = ComicMetadata.MangaFlag(s.Type, s.Genre);
+            info.Summary = ComicMetadata.Summary(s.Description);
+            info.Genre = string.Join(",", s.Genre.Take(8));
+            string age = ComicMetadata.AgeRating(s.Genre);
+            if (age.Length > 0)
+                info.AgeRating = age;
             info.Notes = "Created by Rensaiō";
             return info;
         }
@@ -515,11 +560,12 @@ namespace RensaioBackend.Services.Helpers
                 info.Year = chDownload.ComicUploadDateUTC.Value.Year;
             }
 
-            string type = chDownload.Type?.Trim().ToLowerInvariant() ?? "";
-            if (type == "manga" || chDownload.Tags.Contains("manga", StringComparer.InvariantCultureIgnoreCase))
-            {
-                info.Manga = "YesAndRightToLeft";
-            }
+            info.Manga = ComicMetadata.MangaFlag(chDownload.Type, chDownload.Tags);
+            info.Summary = ComicMetadata.Summary(chDownload.Description);
+            info.Genre = string.Join(",", chDownload.Tags.Take(8));
+            string age = ComicMetadata.AgeRating(chDownload.Tags);
+            if (age.Length > 0)
+                info.AgeRating = age;
             info.Notes = "Created by Rensaiō";
             return info;
         }

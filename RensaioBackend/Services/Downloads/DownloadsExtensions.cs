@@ -39,6 +39,7 @@ public static class DownloadsExtensions
                 ChapterCount = sp.ChapterCount,
                 Type = s.Type,
                 Tags = s.Genre,
+                Description = s.Description,
             });
         }
         return downloads;

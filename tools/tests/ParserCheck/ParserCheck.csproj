@@ -3,5 +3,6 @@
   <ItemGroup><Compile Include="../../../RensaioBackend/Services/Series/ChapterNameParser.cs" />
     <Compile Include="../../../RensaioBackend/Services/Downloads/GapRepair.cs" />
     <Compile Include="../../../RensaioBackend/Services/Downloads/ChapterFilter.cs" />
-    <Compile Include="../../../RensaioBackend/Services/Series/StorageLibraries.cs" /></ItemGroup>
+    <Compile Include="../../../RensaioBackend/Services/Series/StorageLibraries.cs" />
+    <Compile Include="../../../RensaioBackend/Services/Helpers/ComicMetadata.cs" /></ItemGroup>
 </Project>

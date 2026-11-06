@@ -32,3 +32,7 @@ When an extension repository serves the older list format, the reader's second a
 ## Extra library folders
 
 Settings, Extra libraries: add names such as `Manga 18+` or `Comics`. Each is a folder next to the main storage folder (so the container must mount the parent, for example `-v /mnt/Expansion:/library` with `StorageFolder=/library/Manga`). The Add Series dialog and the series Edit dialog get a Library picker. A series in an extra library keeps the absolute path of its folder; one in the main library keeps a relative path as before. Moving between libraries is a rename on the same mount, never a copy. Only the main folder and the listed libraries are accepted (no `..`, no other folder), checked in `Services/Series/StorageLibraries.cs` and covered by `tools/tests/ParserCheck`. Point one Komga library at each folder.
+
+## Metadata for Komga
+
+Every chapter's ComicInfo.xml now has the series summary, genres, the reading direction (`Manga`: right to left for manga, left to right for manhwa and manhua) and an age rating from the genres (`Adults Only 18+`, `Mature 17+`). Each series folder gets a `cover.jpg` and a Mylar `series.json` (title, summary, status, age rating) when they are missing, after a download or when the series is saved. Nothing existing is replaced. The rules are in `Services/Helpers/ComicMetadata.cs` and checked by `tools/tests/ParserCheck`. The "update all titles" action rewrites older chapters' ComicInfo.xml with the new fields.
