@@ -199,6 +199,19 @@ namespace RensaioBackend.Services.Background
                     _logger.LogWarning(ex, "Startup series Type repair failed");
                 }
 
+                // Komga reads a cover and series.json from each series folder: write the ones that are missing.
+                try
+                {
+                    var helper = scope.ServiceProvider.GetRequiredService<ArchiveHelperService>();
+                    var all = await db.Series.Include(a => a.Sources).AsNoTracking().ToListAsync(cancellationToken).ConfigureAwait(false);
+                    foreach (var one in all)
+                        await helper.EnsureSeriesFilesAsync(one, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Startup series cover and series.json pass failed");
+                }
+
                 // Fix: Ensure IsLocal = true for all providers without MihonProviderId that aren't Unknown
                 List<SeriesProviderEntity> localProviderFixes = await db.SeriesProviders
                     .Where(a => string.IsNullOrEmpty(a.MihonProviderId) && !a.IsUnknown && !a.IsLocal)
