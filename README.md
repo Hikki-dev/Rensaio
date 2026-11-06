@@ -4,6 +4,10 @@
 [![Licence: GPL-3.0](https://img.shields.io/github/license/Hikki-dev/Rensaio)](LICENSE)
 [![Docker](https://img.shields.io/badge/docker-ghcr.io%2Fhikki--dev%2Frensaio-2f86d6)](https://github.com/Hikki-dev/Rensaio/pkgs/container/rensaio)
 [![Based on Rensaiō](https://img.shields.io/badge/based%20on-Rensaiō-e11d48)](https://github.com/maxpiva/Rensaio)
+[![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/Hikki-dev/Rensaio/badge)](https://scorecard.dev/viewer/?uri=github.com/Hikki-dev/Rensaio)
+[![Last commit](https://img.shields.io/github/last-commit/Hikki-dev/Rensaio)](https://github.com/Hikki-dev/Rensaio/commits/main)
+[![.NET 10](https://img.shields.io/badge/.NET-10-512bd4?logo=dotnet&logoColor=white)](RensaioBackend)
+[![Works with Komga](https://img.shields.io/badge/works%20with-Komga-5c6bc0)](FORK-NOTES.md)
 
 Follow a manga once. New chapters arrive by themselves, from whichever site works.
 
