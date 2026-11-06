@@ -75,5 +75,20 @@ Expect(Gaps([2, 2, 3], [1, 4], [], 4), "2,3", "duplicate listings");
     Expect(string.Join("|", StorageLibraries.Roots(main, libs)), "/library/Manga 18+|/library/Comics", "roots are siblings of the main folder");
     Expect(StorageLibraries.LibraryOf(main, libs, "/library/Comics/Batman") ?? "main", "Comics", "library of a stored path");
     Expect(StorageLibraries.LibraryOf(main, libs, "One Piece") ?? "main", "main", "relative path is the main library");
+    // emptied folders are cleaned up, but never a library folder itself
+    {
+        var root = Path.Combine(Path.GetTempPath(), "libcheck-" + Guid.NewGuid()); var m = Path.Combine(root, "Manga"); var adult = Path.Combine(root, "Manga 18+");
+        Directory.CreateDirectory(Path.Combine(m, "Action", "Title")); Directory.CreateDirectory(Path.Combine(adult, "Title")); Directory.CreateDirectory(Path.Combine(root, "Other", "Deep"));
+        string[] roots = [m, adult];
+        Directory.Delete(Path.Combine(m, "Action", "Title")); StorageLibraries.DeleteEmptyAncestors(Path.Combine(m, "Action", "Title"), roots);
+        Expect(Directory.Exists(Path.Combine(m, "Action")) ? "kept" : "removed", "removed", "empty category folder is removed");
+        Expect(Directory.Exists(m) ? "kept" : "removed", "kept", "the main library folder stays when empty");
+        Directory.Delete(Path.Combine(adult, "Title")); StorageLibraries.DeleteEmptyAncestors(Path.Combine(adult, "Title"), roots);
+        Expect(Directory.Exists(adult) ? "kept" : "removed", "kept", "an extra library folder stays when empty");
+        Expect(Directory.Exists(root) ? "kept" : "removed", "kept", "the parent folder stays");
+        StorageLibraries.DeleteEmptyAncestors(Path.Combine(root, "Other", "Deep", "x"), roots);
+        Expect(Directory.Exists(Path.Combine(root, "Other", "Deep")) ? "kept" : "removed", "kept", "folders outside the libraries are never touched");
+        Directory.Delete(root, true);
+    }
 }
 Console.WriteLine(bad == 0 ? "parser ok" : $"{bad} failed"); return bad;

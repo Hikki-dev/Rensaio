@@ -235,6 +235,10 @@ namespace RensaioBackend.Controllers
 
                 return Ok(response);
             }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(new { error = ex.Message });
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error updating settings");

@@ -84,4 +84,29 @@ public static class StorageLibraries
                 return name;
         return null;
     }
+
+        /// <summary>
+        /// Deletes empty ancestor folders of <paramref name="fullPath"/> (a category folder left
+        /// empty after a series moved out), but only folders strictly INSIDE one of the library
+        /// roots. A library folder itself is never removed, even when it is empty.
+        /// </summary>
+        public static void DeleteEmptyAncestors(string fullPath, IEnumerable<string> libraryRoots)
+        {
+            string[] roots = libraryRoots.Select(r => r.TrimEnd('/', '\\')).Where(r => r.Length > 0).ToArray();
+            string parent = Path.GetDirectoryName(fullPath) ?? string.Empty;
+            while (roots.Any(r => parent.StartsWith(r + Path.DirectorySeparatorChar, StringComparison.Ordinal)))
+            {
+                try
+                {
+                    if (!Directory.Exists(parent) || Directory.GetFileSystemEntries(parent).Length > 0)
+                        break; // gone, or not empty: stop here
+                    Directory.Delete(parent, false);
+                }
+                catch (Exception)
+                {
+                    break; // locked or no permission: stop ascending
+                }
+                parent = Path.GetDirectoryName(parent) ?? string.Empty;
+            }
+        }
 }

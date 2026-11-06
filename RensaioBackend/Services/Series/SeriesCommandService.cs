@@ -448,7 +448,7 @@ namespace RensaioBackend.Services.Series
                 // ── 6. Delete emptied ancestor dirs of the old path (best-effort) ──
                 if (movedToFinal || !Directory.Exists(oldAbs))
                 {
-                    DeleteEmptyAncestors(oldAbs);
+                    StorageLibraries.DeleteEmptyAncestors(oldAbs, new[] { settings.StorageFolder }.Concat(StorageLibraries.Roots(settings.StorageFolder, settings.Libraries)));
                 }
 
                 // ── 7. Persist the new path ──
@@ -519,36 +519,6 @@ namespace RensaioBackend.Services.Series
                 }
 
                 throw; // propagate the original failure
-            }
-        }
-
-        /// <summary>
-        /// Recursively deletes empty ancestor directories of <paramref name="fullPath"/> (excluding
-        /// the storage folder root itself). Best-effort — used to clean up category folders left
-        /// empty after a series folder is moved out.
-        /// </summary>
-        private static void DeleteEmptyAncestors(string fullPath)
-        {
-            string parent = Path.GetDirectoryName(fullPath) ?? string.Empty;
-            while (!string.IsNullOrEmpty(parent) && parent != "." && parent != "/" && parent != "\\")
-            {
-                try
-                {
-                    if (!Directory.Exists(parent))
-                        break;
-                    var entries = Directory.GetFileSystemEntries(parent);
-                    if (entries.Length > 0)
-                        break; // not empty — stop here
-                    Directory.Delete(parent, false);
-                }
-                catch (Exception)
-                {
-                    break; // can't delete (locked/permission) — stop ascending
-                }
-                string next = Path.GetDirectoryName(parent) ?? string.Empty;
-                if (string.Equals(next, parent, StringComparison.Ordinal))
-                    break;
-                parent = next;
             }
         }
 
