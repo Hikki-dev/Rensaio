@@ -24,6 +24,9 @@ namespace RensaioBackend.Models.Dto
         public Guid? ExistingSeriesId { get; set; }
         [JsonPropertyName("categories")]
         public List<string> Categories { get; set; } = [];
+        /// <summary>Absolute folders of the extra libraries a series can be added to.</summary>
+        [JsonPropertyName("libraries")]
+        public List<LibraryFolderDto> Libraries { get; set; } = [];
         [JsonPropertyName("series")]
         public List<ProviderSeriesDetails> Series { get; set; } = [];
         [JsonPropertyName("preferredLanguages")]
@@ -45,5 +48,16 @@ namespace RensaioBackend.Models.Dto
         [JsonIgnore]
         public Action Action { get; set; }
 
+    }
+}
+
+namespace RensaioBackend.Models.Dto
+{
+    public class LibraryFolderDto
+    {
+        [JsonPropertyName("name")]
+        public string Name { get; set; } = string.Empty;
+        [JsonPropertyName("path")]
+        public string Path { get; set; } = string.Empty;
     }
 }

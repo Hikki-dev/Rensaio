@@ -29,6 +29,9 @@ public class EditableSettingsDto
     public bool CategorizedFolders { get; set; } = false;
     [JsonPropertyName("categories")]
     public string[] Categories { get; set; } = [];
+    /// <summary>Names of extra library folders next to the main storage folder (e.g. "Manga 18+").</summary>
+    [JsonPropertyName("libraries")]
+    public string[] Libraries { get; set; } = [];
     [JsonPropertyName("flareSolverrEnabled")]
     public bool FlareSolverrEnabled { get; set; }
     [JsonPropertyName("flareSolverrUrl")]

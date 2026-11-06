@@ -29,6 +29,7 @@ export interface Settings {
   extensionsCheckForUpdateSchedule: string; // TimeSpan as string
   categorizedFolders: boolean;
   categories: string[];
+  libraries: string[];
   flareSolverrEnabled: boolean;
   flareSolverrUrl: string;
   flareSolverrTimeout: string; // TimeSpan as string
@@ -221,6 +222,7 @@ export interface AugmentedResponse {
   existingSeries: boolean;
   existingSeriesId?: string; // Guid from backend represented as string
   categories: string[];
+  libraries?: { name: string; path: string }[];
   series: FullSeries[];
   preferredLanguages: string[];
   disableJobs?: boolean;

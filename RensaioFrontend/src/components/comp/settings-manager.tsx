@@ -699,6 +699,25 @@ function StorageSection({
   setLocalSettings: (updater: (prev: Settings) => Settings) => void;
 }) {
   const [newCategory, setNewCategory] = useState("");
+  const [newLibrary, setNewLibrary] = useState("");
+
+  const addLibrary = React.useCallback(() => {
+    const name = newLibrary.trim();
+    if (!name) return;
+    setLocalSettings((prev) => {
+      if (!prev || (prev.libraries || []).some((l) => l.toLowerCase() === name.toLowerCase())) return prev;
+      return { ...prev, libraries: [...(prev.libraries || []), name] };
+    });
+    setNewLibrary("");
+  }, [newLibrary, setLocalSettings]);
+
+  const removeLibrary = React.useCallback(
+    (name: string) =>
+      setLocalSettings((prev) =>
+        prev ? { ...prev, libraries: (prev.libraries || []).filter((l) => l !== name) } : prev,
+      ),
+    [setLocalSettings],
+  );
 
   const addCategory = React.useCallback(() => {
     if (!newCategory) return;
@@ -738,6 +757,41 @@ function StorageSection({
         <p className="text-muted-foreground mt-1 text-sm">
           Current folder where series archives are stored
         </p>
+      </div>
+
+      <div className="space-y-2">
+        <Label>Extra libraries</Label>
+        <p className="text-muted-foreground text-sm">
+          Separate folders next to the main one, for example <code>Manga 18+</code> or{" "}
+          <code>Comics</code>. Pick one when adding a series, or move a series later from its
+          Edit dialog. They live on the same drive, so a move is a rename and never a second
+          copy. Point a separate Komga library at each folder. Removing a name here only hides
+          it; the folder and its series stay on disk.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {(localSettings.libraries || []).map((name) => (
+            <Badge key={name} variant="secondary" className="flex items-center gap-1">
+              {name}
+              <X
+                className="hover:text-destructive h-3 w-3 cursor-pointer"
+                onClick={() => removeLibrary(name)}
+              />
+            </Badge>
+          ))}
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            placeholder="New library folder name"
+            value={newLibrary}
+            maxLength={100}
+            onChange={(e) => setNewLibrary(e.target.value)}
+            onKeyDown={(e) => e.key === "Enter" && addLibrary()}
+            className="flex-1"
+          />
+          <Button onClick={addLibrary} disabled={!newLibrary.trim()}>
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
       </div>
 
       <div className="flex items-center space-x-2">

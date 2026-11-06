@@ -240,6 +240,8 @@ namespace RensaioBackend.Services.Search
                     StorageFolderPath = appSettings.StorageFolder,
                     UseCategoriesForPath = appSettings.CategorizedFolders,
                     Categories = appSettings.Categories?.ToList() ?? [],
+                    Libraries = Services.Series.StorageLibraries.Roots(appSettings.StorageFolder, appSettings.Libraries)
+                        .Zip(appSettings.Libraries ?? [], (path, name) => new LibraryFolderDto { Name = name, Path = path }).ToList(),
                     PreferredLanguages = appSettings.PreferredLanguages.ToList(),
                     ExistingSeries = ProviderSeriesDetailsResults.Any(a => a.ExistingProvider)
                 };

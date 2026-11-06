@@ -13,6 +13,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useSettings } from "@/lib/api/hooks/useSettings";
 import type { SeriesExtendedInfo } from "@/lib/api/types";
 
 export interface EditSeriesDialogProps {
@@ -47,6 +49,24 @@ export function EditSeriesDialog({
   const [type, setType] = React.useState(series.type ?? "");
   const [storagePath, setStoragePath] = React.useState(series.storagePath ?? "");
   const [pathTouched, setPathTouched] = React.useState(false);
+
+  // Libraries: the main folder plus the extra ones next to it. A series in an extra library keeps
+  // the absolute folder path; one in the main library keeps a path relative to the main folder.
+  const { data: settings } = useSettings();
+  const libraryRoots = React.useMemo(() => {
+    const main = (settings?.storageFolder ?? "").replace(/[\\/]+$/, "");
+    const parent = main.slice(0, Math.max(main.lastIndexOf("/"), main.lastIndexOf("\\")));
+    return (settings?.libraries ?? []).map((name) => ({ name, path: `${parent}/${name}` }));
+  }, [settings]);
+  const currentLibrary = libraryRoots.find((l) => storagePath.replace(/\\/g, "/").startsWith(l.path + "/"));
+  const moveToLibrary = (name: string) => {
+    const leaf = currentLibrary
+      ? storagePath.replace(/\\/g, "/").slice(currentLibrary.path.length + 1)
+      : storagePath.replace(/^[\\/]+/, "");
+    const target = libraryRoots.find((l) => l.name === name);
+    setStoragePath(target ? `${target.path}/${leaf}` : leaf);
+    setPathTouched(true);
+  };
 
   // Re-seed local state each time the dialog opens with a (possibly refreshed) series.
   React.useEffect(() => {
@@ -131,6 +151,31 @@ export function EditSeriesDialog({
             )}
           </div>
 
+          {/* Library */}
+          {libraryRoots.length > 0 && (
+            <div className="grid gap-2">
+              <Label htmlFor="edit-series-library" className="text-sm font-medium">
+                Library
+              </Label>
+              <Select value={currentLibrary?.name ?? "__main__"} onValueChange={(v) => moveToLibrary(v === "__main__" ? "" : v)}>
+                <SelectTrigger id="edit-series-library">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__main__">Main library</SelectItem>
+                  {libraryRoots.map((l) => (
+                    <SelectItem key={l.name} value={l.name}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Moving to another library renames the folder on the same drive. No second copy is made.
+              </p>
+            </div>
+          )}
+
           {/* Storage path */}
           <div className="grid gap-2">
             <Label htmlFor="edit-series-path" className="text-sm font-medium">
@@ -150,7 +195,7 @@ export function EditSeriesDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Relative to the configured storage folder. Changing it moves the whole folder
+              Relative to the main storage folder, or the full folder of an extra library. Changing it moves the whole folder
               (and its files) to the new location; the operation rolls back if it fails.
             </p>
             {pathTouched && storagePath.trim() !== (series.storagePath ?? "") && (

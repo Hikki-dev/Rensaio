@@ -46,4 +46,34 @@ Expect(Gaps(R(1, 200), [1, 150], [], 150, 5), "2,3,4,5,6", "a long hole is fille
 Expect(Gaps([1, 2, 3.5m, 4, 5], [1, 5], [], 5), "2,3.5,4", "fractional chapters");
 Expect(Gaps(R(1, 10), [1, 10], [], 5), "2,3,4,5", "only up to the continue-after mark, the rest is the normal path");
 Expect(Gaps([2, 2, 3], [1, 4], [], 4), "2,3", "duplicate listings");
+// extra library folders: one mount, sibling folders, nothing else accepted
+{
+    const string main = "/library/Manga"; string[] libs = ["Manga 18+", "Comics"];
+    void Stored(string path, string want, string label) { try { var got = StorageLibraries.ToStored(main, libs, path); if (got != want) { Console.WriteLine($"FAIL lib {label}: got [{got}], want [{want}]"); bad++; } } catch (Exception e) { Console.WriteLine($"FAIL lib {label}: threw {e.Message}"); bad++; } }
+    void Refused(string? path, string label) { try { var got = StorageLibraries.ToStored(main, libs, path); Console.WriteLine($"FAIL lib {label}: accepted as [{got}]"); bad++; } catch (ArgumentException) { } }
+    Stored("One Piece", "One Piece", "relative stays in the main folder");
+    Stored("Action/One Piece", "Action/One Piece", "relative with a category");
+    Stored("/library/Manga/One Piece", "One Piece", "absolute main path becomes relative");
+    Stored("/library/Manga 18+/Title", "/library/Manga 18+/Title", "extra library keeps its absolute path");
+    Stored("/library/Manga 18+//Sub/Title/", "/library/Manga 18+/Sub/Title", "doubled and trailing slashes");
+    Stored("\\library\\Comics\\Batman", "/library/Comics/Batman", "backslashes");
+    Refused("/library/Other/Title", "a sibling folder that is not a library");
+    Refused("/library/Manga 18+", "the library itself");
+    Refused("/library/Manga", "the main library itself");
+    Refused("/etc/passwd", "outside everything");
+    Refused("/library/Manga 18+/../Other/x", "traversal out of a library");
+    Refused("../x", "relative traversal");
+    Refused("C:\\Windows\\x", "drive letter");
+    Refused("/library/Manga 18+x/Title", "name that only starts like a library");
+    Refused("/library/manga 18+/Title", "different case is a different folder");
+    Refused("", "empty"); Refused(null, "null"); Refused("a\0b", "null byte");
+    string lib(string[] names) => string.Join("|", StorageLibraries.CleanNames(main, names));
+    void BadName(string name, string label) { try { lib([name]); Console.WriteLine($"FAIL name {label}: accepted"); bad++; } catch (ArgumentException) { } }
+    Expect(lib([" Manga 18+ ", "", "Comics"]), "Manga 18+|Comics", "names are trimmed, blanks dropped");
+    foreach (var (n, l) in new[] { ("../x", "traversal"), ("a/b", "slash"), ("a\\b", "backslash"), (".hidden", "leading dot"), ("..", "dots"), ("Manga", "same as the main library"), ("manga", "main library, other case"), ("C:", "drive"), ("a*b", "wildcard"), (new string('x', 101), "too long") }) BadName(n, l);
+    try { lib(["A", "a"]); Console.WriteLine("FAIL name duplicate: accepted"); bad++; } catch (ArgumentException) { }
+    Expect(string.Join("|", StorageLibraries.Roots(main, libs)), "/library/Manga 18+|/library/Comics", "roots are siblings of the main folder");
+    Expect(StorageLibraries.LibraryOf(main, libs, "/library/Comics/Batman") ?? "main", "Comics", "library of a stored path");
+    Expect(StorageLibraries.LibraryOf(main, libs, "One Piece") ?? "main", "main", "relative path is the main library");
+}
 Console.WriteLine(bad == 0 ? "parser ok" : $"{bad} failed"); return bad;

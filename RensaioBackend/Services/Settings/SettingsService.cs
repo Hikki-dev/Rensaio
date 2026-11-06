@@ -239,6 +239,13 @@ namespace RensaioBackend.Services.Settings
         public async Task SaveSettingsAsync(EditableSettingsDto set, bool force = false, CancellationToken token = default, bool clearOidcClientSecret = false)
         {
             await PreserveStoredOidcValuesAsync(set, clearOidcClientSecret, token).ConfigureAwait(false);
+            string storageFolder = _config["StorageFolder"] ?? string.Empty;
+            if (storageFolder.Length > 0)
+            {
+                set.Libraries = Services.Series.StorageLibraries.CleanNames(storageFolder, set.Libraries);
+                foreach (string root in Services.Series.StorageLibraries.Roots(storageFolder, set.Libraries))
+                    Directory.CreateDirectory(root); // a new library is created right away so it can be picked
+            }
             if (set.NumberOfSimultaneousDownloads != _settings?.NumberOfSimultaneousDownloads ||
                 set.ChapterDownloadFailRetries != _settings?.ChapterDownloadFailRetries ||
                 set.ChapterDownloadFailRetryTime != _settings?.ChapterDownloadFailRetryTime || 
@@ -352,6 +359,7 @@ namespace RensaioBackend.Services.Settings
                 ExtensionsCheckForUpdateSchedule = settings.ExtensionsCheckForUpdateSchedule,
                 CategorizedFolders = settings.CategorizedFolders,
                 Categories = settings.Categories,
+                Libraries = settings.Libraries,
                 FlareSolverrEnabled = settings.FlareSolverrEnabled,
                 FlareSolverrUrl = settings.FlareSolverrUrl,
                 FlareSolverrTimeout = settings.FlareSolverrTimeout,
@@ -548,6 +556,7 @@ namespace RensaioBackend.Services.Settings
                 ExtensionsCheckForUpdateSchedule = ed.ExtensionsCheckForUpdateSchedule,
                 CategorizedFolders = ed.CategorizedFolders,
                 Categories = ed.Categories,
+                Libraries = ed.Libraries,
                 FlareSolverrEnabled = ed.FlareSolverrEnabled,
                 FlareSolverrUrl = ed.FlareSolverrUrl,
                 FlareSolverrTimeout = ed.FlareSolverrTimeout,

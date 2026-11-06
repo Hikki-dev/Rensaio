@@ -254,6 +254,7 @@ export function ConfirmSeriesStep({
 
   // ── Storage / category state (verbatim) ───────────────────────────────────
   const [selectedCategory, setSelectedCategory] = React.useState<string>("");
+  const [selectedLibrary, setSelectedLibrary] = React.useState<string>(""); // "" = main library
   const [editableStoragePath, setEditableStoragePath] = React.useState<string>("");
   const categoryManuallyChanged = React.useRef<boolean>(false);
 
@@ -291,7 +292,10 @@ export function ConfirmSeriesStep({
 
   const useCategoriesForPath =
     formState.originalAugmentedResponse?.useCategoriesForPath ?? false;
-  const baseStoragePath = formState.originalAugmentedResponse?.storageFolderPath;
+  const libraries = formState.originalAugmentedResponse?.libraries ?? [];
+  const mainStoragePath = formState.originalAugmentedResponse?.storageFolderPath;
+  const baseStoragePath =
+    libraries.find((l) => l.name === selectedLibrary)?.path ?? mainStoragePath;
 
   const titleSeriesIdRef = React.useRef<string | null>(null);
 
@@ -319,7 +323,7 @@ export function ConfirmSeriesStep({
 
   // ── Path-computation effect (verbatim) ────────────────────────────────────
   React.useEffect(() => {
-    if (formState.storagePath && !editableStoragePath) {
+    if (formState.storagePath && !editableStoragePath && !selectedLibrary) {
       setEditableStoragePath(formState.storagePath);
       return;
     }
@@ -341,6 +345,7 @@ export function ConfirmSeriesStep({
     availableCategories,
     useCategoriesForPath,
     selectedCategory,
+    selectedLibrary,
     formState.storagePath,
     editableStoragePath,
   ]);
@@ -672,6 +677,31 @@ export function ConfirmSeriesStep({
               );
             })}
           </div>
+
+          {/* Library — where on disk the series lives (e.g. Manga or Manga 18+) */}
+          {!isAddSourcesMode && titleSeries && libraries.length > 0 && (
+            <div className="mt-4 w-full sm:w-72">
+              <Label htmlFor="library-select" className="text-sm font-medium">
+                Library
+              </Label>
+              <Select
+                value={selectedLibrary || "__main__"}
+                onValueChange={(v) => setSelectedLibrary(v === "__main__" ? "" : v)}
+              >
+                <SelectTrigger id="library-select" className="mt-1 bg-card">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__main__">Main library</SelectItem>
+                  {libraries.map((l) => (
+                    <SelectItem key={l.name} value={l.name}>
+                      {l.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
           {/* More options — Storage Path + Category */}
           {!isAddSourcesMode && titleSeries && (

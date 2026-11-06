@@ -331,7 +331,8 @@ namespace RensaioBackend.Services.Series
                 return;
 
             // ── 1. Sanitize + validate the requested relative path ──
-            string newRel = SeriesModelExtensions.SanitizeAndValidateStoragePath(requestedPath);
+            SettingsDto settings = await _settings.GetSettingsAsync(token).ConfigureAwait(false);
+            string newRel = StorageLibraries.ToStored(settings.StorageFolder, settings.Libraries, requestedPath);
             string oldRel = SeriesModelExtensions.NormalizeStoragePath(dbSeries.StoragePath);
 
             if (string.Equals(newRel, oldRel, StringComparison.Ordinal))
@@ -345,7 +346,6 @@ namespace RensaioBackend.Services.Series
             if (otherSeriesUsingTarget != null)
                 throw new ArgumentException($"Target storage path '{newRel}' is already used by another series.");
 
-            SettingsDto settings = await _settings.GetSettingsAsync(token).ConfigureAwait(false);
             string oldAbs = Path.Combine(settings.StorageFolder, oldRel);
             string newAbs = Path.Combine(settings.StorageFolder, newRel);
             string newParentAbs = Path.GetDirectoryName(newAbs) ?? string.Empty;
@@ -1231,12 +1231,12 @@ namespace RensaioBackend.Services.Series
         private async Task<Models.Database.SeriesEntity?> FindExistingSeriesAsync(AugmentedResponseDto ProviderSeriesDetails,
             SettingsDto settings, Dictionary<string, Guid> paths, CancellationToken token)
         {
-            if (ProviderSeriesDetails.StorageFolderPath.StartsWith(settings.StorageFolder))
-                ProviderSeriesDetails.StorageFolderPath = ProviderSeriesDetails.StorageFolderPath[settings.StorageFolder.Length..]
-                    .TrimStart(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-
-            ProviderSeriesDetails.StorageFolderPath = settings.StorageFolder.GetActualDirectoryPathCaseInsensitive(
-                ProviderSeriesDetails.StorageFolderPath);
+            // main folder: relative path; extra library: absolute path. Anything else is refused.
+            string stored = StorageLibraries.ToStored(settings.StorageFolder, settings.Libraries, ProviderSeriesDetails.StorageFolderPath);
+            string? libName = StorageLibraries.LibraryOf(settings.StorageFolder, settings.Libraries, stored);
+            if (libName == null)
+                stored = settings.StorageFolder.GetActualDirectoryPathCaseInsensitive(stored);
+            ProviderSeriesDetails.StorageFolderPath = stored;
 
             if (paths.TryGetValue(ProviderSeriesDetails.StorageFolderPath, out Guid id))
             {

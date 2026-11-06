@@ -28,3 +28,7 @@ Keeping up with the original: a workflow (.github/workflows/upstream-sync.yml) r
 ## Extension list refresh
 
 When an extension repository serves the older list format, the reader's second attempt started from the wrong place in the file and the refresh failed. The file is now read into memory and rewound between attempts (`Mihon.ExtensionsBridge.Core/Services/RepositoryDownloader.cs`).
+
+## Extra library folders
+
+Settings, Extra libraries: add names such as `Manga 18+` or `Comics`. Each is a folder next to the main storage folder (so the container must mount the parent, for example `-v /mnt/Expansion:/library` with `StorageFolder=/library/Manga`). The Add Series dialog and the series Edit dialog get a Library picker. A series in an extra library keeps the absolute path of its folder; one in the main library keeps a relative path as before. Moving between libraries is a rename on the same mount, never a copy. Only the main folder and the listed libraries are accepted (no `..`, no other folder), checked in `Services/Series/StorageLibraries.cs` and covered by `tools/tests/ParserCheck`. Point one Komga library at each folder.
